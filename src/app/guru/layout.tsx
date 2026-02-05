@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { 
@@ -24,49 +24,53 @@ export default function AdminLayout({
   const router = useRouter()
   const pathname = usePathname()
   const [openProfile, setOpenProfile] = useState(false)
+  const [userName, setUserName] = useState("Loading...")
+  const [userRole, setUserRole] = useState("")
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("name, role")
+        .eq("id", user.id)
+        .single()
+
+      if (error) {
+        console.error("Gagal ambil data user:", error)
+        return
+      }
+
+      setUserName(data.name)
+      setUserRole(data.role)
+    }
+
+    fetchUserProfile()
+  }, [])
 
   const menu = [
     { 
       name: "Dashboard", 
-      path: "/dashboard/admin",
+      path: "/guru/dashboard",
       subtitle: "Ringkasan sistem",
       icon: LayoutDashboard
     },
     { 
-      name: "Siswa", 
-      path: "#",
-      subtitle: "Manajemen siswa",
-      icon: GraduationCap
-    },
-    { 
-      name: "Guru", 
-      path: "#",
-      subtitle: "Manajemen guru",
-      icon: Users
-    },
-    { 
       name: "DUDI", 
-      path: "#",
+      path: "/guru/dudi",
       subtitle: "Manajemen DUDI",
       icon: Building2
-    },
-    { 
-      name: "Magang", 
-      path: "#",
-      subtitle: "Penempatan magang",
-      icon: Briefcase
     },
     { 
       name: "Pengguna", 
       path: "#",
       subtitle: "Manajemen user",
       icon: UserCog
-    },
-    { 
-      name: "Activity Logs", 
-      path: "#",
-      subtitle: "Riwayat aktivitas",
-      icon: Activity
     },
     { 
       name: "Pengaturan", 
@@ -174,10 +178,10 @@ export default function AdminLayout({
 
               <div className="text-left leading-tight">
                 <p className="text-sm font-semibold text-gray-800">
-                  Admin Sistem
+                  {userName}
                 </p>
-                <p className="text-xs text-gray-500">
-                  Admin
+                <p className="text-xs text-gray-500 capitalize">
+                  {userRole}
                 </p>
               </div>
             </button>
