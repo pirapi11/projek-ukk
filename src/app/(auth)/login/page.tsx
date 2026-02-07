@@ -125,7 +125,7 @@ export default function Page() {
           {loading ? "Signing in..." : "Sign In"}
         </button>
 
-        <p className="mt-4 text-center text-sm text-gray-500">
+        {/* <p className="mt-4 text-center text-sm text-gray-500">
           Don&apos;t have an account?{" "}
           <button
             onClick={() => router.push("/register")}
@@ -133,7 +133,7 @@ export default function Page() {
           >
             Sign up
           </button>
-        </p>
+        </p> */}
       </div>
 
       <p className="mt-6 text-center text-[14px] text-gray-400 leading-relaxed">

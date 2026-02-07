@@ -1,9 +1,113 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Home, BookOpen, Briefcase, User, Building2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { 
+  Home, 
+  Building2, 
+  BookOpen, 
+  Briefcase,
+  Bell,
+  User,
+  LogOut,
+  GraduationCap
+} from "lucide-react"
+
+// Komponen ProfileDropdown (sama seperti di atas)
+function ProfileDropdown({
+  userName,
+  userRole,
+  onLogout
+}: {
+  userName: string
+  userRole: string
+  onLogout: () => void
+}) {
+  const [openDropdown, setOpenDropdown] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  const handleLogoutClick = () => {
+    setOpenDropdown(false)
+    setShowConfirm(true)
+  }
+
+  return (
+    <>
+      <div className="relative">
+        <button
+          onClick={() => setOpenDropdown(!openDropdown)}
+          className="flex items-center gap-3 focus:outline-none hover:opacity-90 transition-opacity"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+            <User className="w-5 h-5 text-white" />
+          </div>
+
+          <div className="text-left leading-tight hidden md:block">
+            <p className="text-sm font-semibold text-gray-800">{userName}</p>
+            <p className="text-xs text-gray-500 capitalize">{userRole}</p>
+          </div>
+        </button>
+
+        {openDropdown && (
+          <div 
+            className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-xl z-50 overflow-hidden"
+            onClick={() => setOpenDropdown(false)}
+          >
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <p className="font-medium text-gray-900">{userName}</p>
+              <p className="text-sm text-gray-500 capitalize">{userRole}</p>
+            </div>
+
+            <button
+              onClick={handleLogoutClick}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Keluar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                  <LogOut className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Konfirmasi Keluar
+                </h3>
+                <p className="text-gray-600">
+                  Apakah Anda yakin ingin keluar dari sistem?<br />
+                  Anda akan diarahkan ke halaman login.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors"
+                >
+                  Ya, Keluar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 export default function SiswaLayout({
   children,
@@ -12,16 +116,12 @@ export default function SiswaLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [openProfile, setOpenProfile] = useState(false)
   const [userName, setUserName] = useState("Loading...")
   const [userRole, setUserRole] = useState("")
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const { data, error } = await supabase
@@ -35,152 +135,97 @@ export default function SiswaLayout({
         return
       }
 
-      setUserName(data.name)
-      setUserRole(data.role)
+      setUserName(data.name || "Siswa")
+      setUserRole(data.role || "siswa")
     }
 
     fetchUserProfile()
   }, [])
 
   const handleLogout = async () => {
-      await supabase.auth.signOut()
-      router.push("/login")
-    }
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
 
   const menu = [
-    {
-      title: "Dashboard",
-      desc: "Ringkasan aktivitas",
-      icon: Home,
-      path: "/siswa/dashboard",
-    },
-    {
-      title: "Dudi",
-      desc: "Dunia Usaha & Industri",
-      icon: Building2,
-      path: "/siswa/dudi",
-    },
-    {
-      title: "Jurnal Harian",
-      desc: "Catatan harian",
-      icon: BookOpen,
-      path: "/siswa/jurnal",
-    },
-    {
-      title: "Magang",
-      desc: "Data magang saya",
-      icon: Briefcase,
-      path: "/siswa/magang",
-    },
+    { name: "Dashboard", path: "/siswa/dashboard", subname: "Ringkasan aktivitas", icon: Home },
+    { name: "Dudi", path: "/siswa/dudi", subname: "Dunia Usaha & Industri", icon: Building2 },
+    { name: "Jurnal Harian", path: "/siswa/jurnal", subname: "Catatan harian", icon: BookOpen },
+    { name: "Magang", path: "/siswa/magang", subname: "Data magang saya", icon: Briefcase },
   ]
 
   return (
-    <div className="h-screen flex bg-gray-50 overflow-hidden">
-      {/* sidebar */}
-      <aside className="w-64 bg-white border-r flex flex-col flex-shrink-0">
-        {/* logo */}
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
-              S
-            </div>
-            <div>
-              <h1 className="font-bold text-gray-900">SIMMAS</h1>
-              <p className="text-xs text-gray-500">Panel Siswa</p>
-            </div>
+    <div className="h-screen w-screen bg-gray-50 overflow-hidden">
+      {/* SIDEBAR */}
+      <aside className="fixed top-0 left-0 bottom-0 w-64 bg-white border-r border-gray-200 overflow-y-auto z-40">
+        <div className="h-16 bg-white flex items-center gap-3 px-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-black">SIMMAS</h1>
+            <p className="text-xs text-gray-400">Panel Siswa</p>
           </div>
         </div>
-
-        {/* menu aktif */}
-        <nav className="flex-1 p-4 space-y-2">
-          {menu.map((item, i) => {
-            const Icon = item.icon
+        <div className="p-4 space-y-1">
+          {menu.map(item => {
             const active = pathname === item.path
-
+            const Icon = item.icon
             return (
               <button
-                key={i}
+                key={item.name}
                 onClick={() => router.push(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition
-                  ${
-                    active
-                      ? "bg-cyan-500 text-white"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                className={`w-full text-left px-4 py-3 rounded-xl text-sm transition flex items-center gap-3
+                  ${active ? "bg-gradient-to-br from-cyan-500 to-cyan-600 text-white" : "text-gray-700 hover:bg-gray-100"}`}
               >
-                <Icon className="w-5 h-5" />
-                <div>
-                  <div className="font-medium text-sm">{item.title}</div>
-                  <div
-                    className={`text-xs ${
-                      active ? "opacity-90" : "text-gray-500"
-                    }`}
-                  >
-                    {item.desc}
-                  </div>
+                <Icon className={`w-5 h-5 ${active ? "text-white" : "text-gray-500"}`} />
+                <div className="flex-1">
+                  <div className={`font-medium ${active ? "text-white" : "text-gray-800"}`}>{item.name}</div>
+                  <div className={`text-xs ${active ? "text-cyan-100" : "text-gray-500"}`}>{item.subname}</div>
                 </div>
               </button>
             )
           })}
-        </nav>
-
-        {/* profil seolah */}
-        <div className="p-4 border-t text-xs text-gray-500">
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full" />
-            SMK Negeri 1 Surabaya
+            <div className="w-8 h-8 rounded-full bg-green-400 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <div className="flex-1">
+              <div className="text-xs font-medium text-gray-800">SMK Negeri 1 Surabaya</div>
+              <div className="text-xs text-gray-500">Sistem Pelaporan v1.0</div>
+            </div>
           </div>
-          <p className="text-gray-400 mt-1">Sistem Pelaporan v1.0</p>
         </div>
       </aside>
 
-      {/* MAIN */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* header */}
-        <header className="h-20 bg-white border-b px-8 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h2 className="font-bold text-gray-900">
-              SMK Negeri 1 Surabaya
-            </h2>
-            <p className="text-sm text-gray-500">
-              Sistem Manajemen Magang Siswa
-            </p>
-          </div>
+      {/* HEADER */}
+      <header className="fixed top-0 left-64 right-0 h-16 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-6">
+        <div className="flex-1">
+          <h2 className="text-base font-semibold text-gray-900">SMK Negeri 1 Surabaya</h2>
+          <p className="text-xs text-gray-500">Sistem Manajemen Magang Siswa</p>
+        </div>
 
-          <div className="relative">
-            <button
-              onClick={() => setOpenProfile(!openProfile)}
-              className="flex items-center gap-3"
-            >
-              <div className="w-9 h-9 rounded-xl bg-cyan-500 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-gray-800">
-                  {userName}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">
-                  {userRole}
-                </p>
-              </div>
-            </button>
+        <div className="flex items-center gap-5">
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Bell className="w-5 h-5 text-gray-600" />
+          </button>
 
-            {openProfile && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow">
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 rounded-lg">
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
-        {/* scrollable page */}
-        <main className="flex-1 overflow-y-auto p-8">
+          <ProfileDropdown 
+            userName={userName}
+            userRole={userRole}
+            onLogout={handleLogout}
+          />
+        </div>
+      </header>
+
+      {/* MAIN CONTENT */}
+      <main className="ml-64 pt-16 h-screen overflow-y-auto bg-gray-50">
+        <div className="p-6">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

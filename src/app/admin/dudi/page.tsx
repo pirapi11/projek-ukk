@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { createPortal } from "react-dom"
 import {
   Building2,
   CheckCircle2,
@@ -234,62 +235,153 @@ export default function DudiAdminPage() {
       </div>
 
       {/* MODAL */}
-      {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md space-y-4">
-            <h3 className="font-semibold">Tambah DUDI</h3>
+      {open &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-6">
 
-            {[
-              ["Nama Perusahaan", "nama_perusahaan"],
-              ["Alamat", "alamat"],
-              ["Telepon", "telepon"],
-              ["Email", "email"],
-              ["Penanggung Jawab", "penanggung_jawab"],
-            ].map(([label, key]) => (
-              <input
-                key={key}
-                placeholder={label}
-                className="w-full border rounded-lg px-3 py-2 text-sm"
-                value={(form as any)[key]}
-                onChange={e =>
-                  setForm(p => ({ ...p, [key]: e.target.value }))
-                }
-              />
-            ))}
+              {/* HEADER */}
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Tambah DUDI Baru
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Lengkapi semua informasi yang diperlukan
+                </p>
+              </div>
 
-            <select
-              value={form.status}
-              onChange={e =>
-                setForm(p => ({
-                  ...p,
-                  status: e.target.value as DudiStatus,
-                }))
-              }
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="pending">Pending</option>
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
-            </select>
+              {/* FORM */}
+              <div className="space-y-4 text-sm">
 
-            <div className="flex gap-3 pt-3">
-              <button
-                onClick={() => setOpen(false)}
-                className="flex-1 border rounded-lg py-2 text-sm"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="flex-1 bg-cyan-500 text-white rounded-lg py-2 text-sm"
-              >
-                Simpan
-              </button>
+                {/* Nama Perusahaan */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Nama Perusahaan <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    placeholder="Masukkan nama perusahaan"
+                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.nama_perusahaan}
+                    onChange={e =>
+                      setForm(p => ({ ...p, nama_perusahaan: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {/* Alamat */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Alamat <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    placeholder="Masukkan alamat lengkap"
+                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.alamat}
+                    onChange={e =>
+                      setForm(p => ({ ...p, alamat: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {/* Telepon */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Telepon <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    placeholder="Contoh: 021-12345678"
+                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.telepon}
+                    onChange={e =>
+                      setForm(p => ({ ...p, telepon: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    placeholder="Contoh: info@perusahaan.com"
+                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.email}
+                    onChange={e =>
+                      setForm(p => ({ ...p, email: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {/* Penanggung Jawab */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Penanggung Jawab <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    placeholder="Nama penanggung jawab"
+                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.penanggung_jawab}
+                    onChange={e =>
+                      setForm(p => ({ ...p, penanggung_jawab: e.target.value }))
+                    }
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-1">
+                  <label className="font-medium text-gray-700">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="w-full rounded-xl border px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={form.status}
+                    onChange={e =>
+                      setForm(p => ({
+                        ...p,
+                        status: e.target.value as DudiStatus,
+                      }))
+                    }
+                  >
+                    <option value="aktif">Aktif</option>
+                    <option value="pending">Pending</option>
+                    <option value="nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* ACTION */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="
+                    flex-1 rounded-xl py-2 font-medium
+                    border border-gray-300 text-gray-300
+                    transition-all duration-200
+                    hover:bg-red-500 hover:text-white hover:shadow-md
+                    active:scale-95
+                  ">
+                  Batal
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="
+                    flex-1 rounded-xl py-2 font-medium text-white
+                    bg-gray-300
+                    transition-all duration-200
+                    hover:bg-cyan-600 hover:shadow-md
+                    disabled:hover:bg-gray-300
+                    disabled:cursor-not-allowed
+                  ">
+                  Simpan
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

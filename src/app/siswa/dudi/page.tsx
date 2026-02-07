@@ -1,6 +1,47 @@
+"use client"
+
+import { useState } from "react"
+
 export default function DudiPage() {
+
+  const [dudiList, setDudiList] = useState(data)
+  const [toast, setToast] = useState(false)
+  const [selectedDudi, setSelectedDudi] = useState<any>(null)
+
+  const handleDaftar = (index: number) => {
+    const updated = [...dudiList]
+
+    updated[index] = {
+      ...updated[index],
+      registered: true,
+      status: "Menunggu",
+      used: updated[index].used + 1,
+    }
+
+    setDudiList(updated)
+    setToast(true)
+
+    setTimeout(() => {
+      setToast(false)
+    }, 4000)
+  }
+
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className="
+          fixed top-6 right-6 z-[9999]
+          bg-lime-500 text-white
+          px-5 py-3 rounded-xl shadow-lg
+          flex items-center gap-3
+          animate-slide-in
+        ">
+          <span className="text-sm font-medium">
+            Pendaftaran magang berhasil dikirim! Menunggu verifikasi dari perusahaan.
+          </span>
+          <button onClick={() => setToast(false)}>✕</button>
+        </div>
+      )}
       {/* TITLE */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
@@ -31,7 +72,7 @@ export default function DudiPage() {
 
       {/* CARD LIST */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {data.map((item, i) => (
+        {dudiList.map((item, i) => (
           <div
             key={i}
             className="bg-white rounded-2xl border p-5 flex flex-col justify-between"
@@ -92,7 +133,10 @@ export default function DudiPage() {
 
             {/* ACTION */}
             <div className="mt-5 flex items-center justify-between">
-              <button className="text-sm text-gray-500 hover:text-gray-700">
+              <button
+                onClick={() => setSelectedDudi(item)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
                 Detail
               </button>
 
@@ -104,7 +148,10 @@ export default function DudiPage() {
                   Sudah Mendaftar
                 </button>
               ) : (
-                <button className="text-sm px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600">
+                <button
+                  onClick={() => handleDaftar(i)}
+                  className="text-sm px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600"
+                >
                   Daftar
                 </button>
               )}
@@ -112,6 +159,76 @@ export default function DudiPage() {
           </div>
         ))}
       </div>
+        {selectedDudi && (
+          <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center">
+            <div className="bg-white w-full max-w-xl rounded-2xl p-6 space-y-6">
+
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-bold">{selectedDudi.name}</h2>
+                  <p className="text-sm text-cyan-600">{selectedDudi.field}</p>
+                </div>
+
+                {selectedDudi.registered && (
+                  <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                    Menunggu Verifikasi
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-sm mb-1">Tentang Perusahaan</h3>
+                <p className="text-sm text-gray-500">{selectedDudi.desc}</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-sm mb-2">Informasi Kontak</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                  <div>📍 {selectedDudi.address}</div>
+                  <div>👤 {selectedDudi.pic}</div>
+                </div>
+              </div>
+
+              <div className="bg-cyan-50 rounded-xl p-4 text-sm">
+                <div className="flex justify-between">
+                  <span>Kuota Magang</span>
+                  <span>{selectedDudi.used}/{selectedDudi.total}</span>
+                </div>
+                <div className="mt-1">
+                  Slot Tersisa: {selectedDudi.total - selectedDudi.used}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setSelectedDudi(null)}
+                  className="px-4 py-2 rounded-lg border"
+                >
+                  Tutup
+                </button>
+
+                {!selectedDudi.registered ? (
+                  <button
+                    onClick={() => {
+                      handleDaftar(dudiList.indexOf(selectedDudi))
+                      setSelectedDudi(null)
+                    }}
+                    className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600"
+                  >
+                    Daftar Magang
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-gray-500"
+                  >
+                    Sudah Mendaftar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }
