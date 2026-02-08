@@ -10,13 +10,14 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Search,
 } from "lucide-react"
 
-/* ================= TYPES (SESUAI DB) ================= */
+/* ================= TYPES ================= */
 
 type DudiStatus = "aktif" | "nonaktif" | "pending"
 
-type Dudi = {
+interface Dudi {
   id: number
   nama_perusahaan: string
   alamat: string
@@ -24,17 +25,15 @@ type Dudi = {
   email: string
   penanggung_jawab: string
   status: DudiStatus
+  magang: { count: number }[]
 }
 
-type DudiForm = Omit<Dudi, "id">
+type DudiForm = Omit<Dudi, "id" | "magang">
 
-/* ================= PAGE ================= */
+/* ================= MAIN COMPONENT ================= */
 
 export default function DudiAdminPage() {
   const [data, setData] = useState<Dudi[]>([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-
   const [form, setForm] = useState<DudiForm>({
     nama_perusahaan: "",
     alamat: "",
@@ -44,10 +43,25 @@ export default function DudiAdminPage() {
     status: "pending",
   })
 
-  /* ================= FETCH DATA ================= */
+  const [open, setOpen] = useState(false)
+  const [isEdit, setIsEdit] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
 
-  const fetchDudi = async () => {
-    const { data } = await supabase
+  const [loading, setLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const perPage = 5
+
+  useEffect(() => {
+    fetchDudi()
+  }, [])
+
+  async function fetchDudi() {
+    setLoading(true)
+    const { data: dudiData, error } = await supabase
       .from("dudi")
       .select(`
         id,
@@ -57,107 +71,143 @@ export default function DudiAdminPage() {
         email,
         penanggung_jawab,
         status,
-        users (
-          id,
-          email
-        )
+        magang:magang!magang_dudi_id_fkey (count)
       `)
       .order("created_at", { ascending: false })
 
-    setData(data ?? [])
+    if (error) {
+      console.error("Error fetch DUDI:", error)
+    } else {
+      setData(dudiData || [])
+    }
+    setLoading(false)
   }
 
-  useEffect(() => {
-    fetchDudi()
-  }, [])
+  const isFormComplete =
+    [form.nama_perusahaan, form.alamat, form.telepon, form.email, form.penanggung_jawab].every(
+      (str) => str.trim() !== ""
+    ) && !!form.status
 
-  /* ================= SAVE ================= */
-
-  const handleSave = async () => {
-    if (
-      !form.nama_perusahaan ||
-      !form.alamat ||
-      !form.telepon ||
-      !form.email ||
-      !form.penanggung_jawab
-    ) {
-      alert("Semua field wajib diisi")
-      return
-    }
+  async function handleSave() {
+    if (!isFormComplete) return
 
     setLoading(true)
 
-    /* =============================
-      1. BUAT USER DUDI
-    ============================== */
+    try {
+      if (isEdit && editId) {
+        // EDIT DUDI
+        const { error } = await supabase
+          .from("dudi")
+          .update({
+            nama_perusahaan: form.nama_perusahaan,
+            alamat: form.alamat,
+            telepon: form.telepon,
+            email: form.email,
+            penanggung_jawab: form.penanggung_jawab,
+            status: form.status,
+          })
+          .eq("id", editId)
 
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .insert({
-        email: form.email,
-        role: "dudi",
-      })
-      .select()
-      .single()
+        if (error) throw error
+      } else {
+        // TAMBAH DUDI BARU (tanpa user_id)
+        const { error } = await supabase.from("dudi").insert({
+          nama_perusahaan: form.nama_perusahaan,
+          alamat: form.alamat,
+          telepon: form.telepon,
+          email: form.email,
+          penanggung_jawab: form.penanggung_jawab,
+          status: form.status,
+        })
 
-    if (userError) {
+        if (error) throw error
+      }
+
+      await fetchDudi()
+      closeModal()
+    } catch (err: any) {
+      console.error("Error save DUDI:", err)
+      alert("Gagal menyimpan: " + (err?.message || "Periksa koneksi atau data duplikat"))
+    } finally {
       setLoading(false)
-      alert("Gagal membuat akun DUDI")
-      return
     }
-
-    /* =============================
-      2. SIMPAN DATA DUDI
-    ============================== */
-
-    const { error: dudiError } = await supabase.from("dudi").insert({
-      user_id: user.id,
-      nama_perusahaan: form.nama_perusahaan,
-      alamat: form.alamat,
-      telepon: form.telepon,
-      email: form.email,
-      penanggung_jawab: form.penanggung_jawab,
-      status: "pending",
-    })
-
-    setLoading(false)
-
-    if (dudiError) {
-      alert("Gagal menyimpan data DUDI")
-      return
   }
 
-  /* =============================
-     3. REFRESH DATA + RESET
-  ============================== */
+  function openAddModal() {
+    setForm({
+      nama_perusahaan: "",
+      alamat: "",
+      telepon: "",
+      email: "",
+      penanggung_jawab: "",
+      status: "pending",
+    })
+    setIsEdit(false)
+    setEditId(null)
+    setOpen(true)
+  }
 
-  setOpen(false)
-  fetchDudi()
+  function openEditModal(dudi: Dudi) {
+    setForm({
+      nama_perusahaan: dudi.nama_perusahaan,
+      alamat: dudi.alamat,
+      telepon: dudi.telepon,
+      email: dudi.email,
+      penanggung_jawab: dudi.penanggung_jawab,
+      status: dudi.status,
+    })
+    setIsEdit(true)
+    setEditId(dudi.id)
+    setOpen(true)
+  }
 
-  setForm({
-    nama_perusahaan: "",
-    alamat: "",
-    telepon: "",
-    email: "",
-    penanggung_jawab: "",
-    status: "pending",
-  })
-}
+  function closeModal() {
+    setOpen(false)
+    setIsEdit(false)
+    setEditId(null)
+  }
 
-  /* ================= RENDER ================= */
+  async function confirmDelete() {
+    if (!deleteId) return
+    setLoading(true)
+
+    const { error } = await supabase
+      .from("dudi")
+      .update({ status: "nonaktif" })
+      .eq("id", deleteId)
+
+    if (error) {
+      console.error("Error soft delete:", error)
+      alert("Gagal mengubah status")
+    } else {
+      await fetchDudi()
+    }
+
+    setShowDeleteConfirm(false)
+    setDeleteId(null)
+    setLoading(false)
+  }
+
+  // Filter & Pagination
+  const filtered = data.filter(
+    (d) =>
+      d.nama_perusahaan.toLowerCase().includes(search.toLowerCase()) ||
+      d.alamat.toLowerCase().includes(search.toLowerCase()) ||
+      d.penanggung_jawab.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage)
+  const totalPages = Math.ceil(filtered.length / perPage)
 
   return (
-    <div className="space-y-6">
-
-      {/* HEADER */}
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Manajemen DUDI</h1>
-        <p className="text-sm text-gray-500">
-          Data Dunia Usaha dan Dunia Industri
-        </p>
+        <p className="text-sm text-gray-500">Data Dunia Usaha dan Dunia Industri</p>
       </div>
 
-      {/* STAT */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Total DUDI"
@@ -166,216 +216,255 @@ export default function DudiAdminPage() {
         />
         <StatCard
           title="Aktif"
-          value={data.filter(d => d.status === "aktif").length}
+          value={data.filter((d) => d.status === "aktif").length}
           icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
         />
         <StatCard
           title="Nonaktif"
-          value={data.filter(d => d.status === "nonaktif").length}
+          value={data.filter((d) => d.status === "nonaktif").length}
           icon={<XCircle className="w-5 h-5 text-red-500" />}
         />
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white rounded-xl border">
-        <div className="p-4 flex justify-between">
-          <h2 className="font-semibold">Daftar DUDI</h2>
-          <button
-            onClick={() => setOpen(true)}
-            className="flex items-center gap-2 bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Tambah DUDI
-          </button>
+      {/* Tabel */}
+      <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="p-4 flex flex-col sm:flex-row justify-between gap-4 border-b">
+          <h2 className="font-semibold text-lg">Daftar DUDI</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari perusahaan, alamat, penanggung jawab..."
+                className="pl-10 pr-4 py-2 border rounded-lg text-sm w-full sm:w-64"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+              />
+            </div>
+            <button
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            >
+              <Plus className="w-4 h-4" />
+              Tambah DUDI
+            </button>
+          </div>
         </div>
 
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">Perusahaan</th>
-              <th className="px-4 py-3 text-left">Kontak</th>
-              <th className="px-4 py-3 text-left">Penanggung Jawab</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data.map(d => (
-              <tr key={d.id}>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{d.nama_perusahaan}</div>
-                  <div className="text-xs text-gray-500">{d.alamat}</div>
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  <div>{d.email}</div>
-                  <div>{d.telepon}</div>
-                </td>
-                <td className="px-4 py-3">{d.penanggung_jawab}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs
-                    ${d.status === "aktif" && "bg-green-100 text-green-700"}
-                    ${d.status === "nonaktif" && "bg-red-100 text-red-600"}
-                    ${d.status === "pending" && "bg-yellow-100 text-yellow-700"}
-                  `}>
-                    {d.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <button className="p-2 hover:bg-gray-100 rounded">
-                    <Pencil className="w-4 h-4 text-cyan-600" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded">
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left font-medium">Perusahaan</th>
+                <th className="px-6 py-3 text-left font-medium">Kontak</th>
+                <th className="px-6 py-3 text-left font-medium">Penanggung Jawab</th>
+                <th className="px-6 py-3 text-left font-medium">Status</th>
+                <th className="px-6 py-3 text-center font-medium">Siswa Magang</th>
+                <th className="px-6 py-3 text-center font-medium">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y">
+              {paginated.map((d) => (
+                <tr key={d.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="font-medium">{d.nama_perusahaan}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{d.alamat}</div>
+                  </td>
+                  <td className="px-6 py-4 text-xs">
+                    <div>{d.email}</div>
+                    <div className="mt-0.5">{d.telepon}</div>
+                  </td>
+                  <td className="px-6 py-4">{d.penanggung_jawab}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium
+                        ${d.status === "aktif" && "bg-green-100 text-green-700"}
+                        ${d.status === "pending" && "bg-yellow-100 text-yellow-700"}
+                        ${d.status === "nonaktif" && "bg-red-100 text-red-700"}
+                      `}
+                    >
+                      {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center font-medium">
+                    {d.magang?.[0]?.count ?? 0}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => openEditModal(d)}
+                      className="p-2 hover:bg-cyan-50 rounded-lg mr-1"
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4 text-cyan-600" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeleteId(d.id)
+                        setShowDeleteConfirm(true)
+                      }}
+                      className="p-2 hover:bg-red-50 rounded-lg"
+                      title="Nonaktifkan"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {paginated.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    Tidak ada data DUDI
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="px-6 py-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600 border-t">
+          <div>
+            Menampilkan {(page - 1) * perPage + 1} –{" "}
+            {Math.min(page * perPage, filtered.length)} dari {filtered.length} entri
+          </div>
+          <div className="flex gap-2 mt-3 sm:mt-0">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1 border rounded disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              «
+            </button>
+            <span className="px-4 py-1 bg-cyan-600 text-white rounded">
+              {page}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || totalPages === 0}
+              className="px-3 py-1 border rounded disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              »
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL TAMBAH/EDIT */}
       {open &&
-        typeof window !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
-            <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-6">
-
-              {/* HEADER */}
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Tambah DUDI Baru
+                <h2 className="text-xl font-bold text-gray-900">
+                  {isEdit ? "Edit DUDI" : "Tambah DUDI Baru"}
                 </h2>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 mt-1">
                   Lengkapi semua informasi yang diperlukan
                 </p>
               </div>
 
-              {/* FORM */}
-              <div className="space-y-4 text-sm">
+              <div className="space-y-5">
+                {(["nama_perusahaan", "alamat", "telepon", "email", "penanggung_jawab"] as const).map(
+                  (field) => (
+                    <div key={field} className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700 capitalize">
+                        {field.replace(/_/g, " ")} <span className="text-red-500">*</span>
+                      </label>
+                      {field === "alamat" ? (
+                        <textarea
+                          placeholder="Masukkan alamat lengkap"
+                          className="w-full rounded-xl border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[80px]"
+                          value={form[field]}
+                          onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
+                        />
+                      ) : (
+                        <input
+                          type={field === "email" ? "email" : "text"}
+                          placeholder={
+                            field === "telepon"
+                              ? "Contoh: 031-5551234"
+                              : field === "email"
+                              ? "Contoh: hr@perusahaan.co.id"
+                              : "Masukkan " + field.replace(/_/g, " ")
+                          }
+                          className="w-full rounded-xl border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          value={form[field]}
+                          onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
+                        />
+                      )}
+                    </div>
+                  )
+                )}
 
-                {/* Nama Perusahaan */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
-                    Nama Perusahaan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    placeholder="Masukkan nama perusahaan"
-                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={form.nama_perusahaan}
-                    onChange={e =>
-                      setForm(p => ({ ...p, nama_perusahaan: e.target.value }))
-                    }
-                  />
-                </div>
-
-                {/* Alamat */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
-                    Alamat <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    placeholder="Masukkan alamat lengkap"
-                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={form.alamat}
-                    onChange={e =>
-                      setForm(p => ({ ...p, alamat: e.target.value }))
-                    }
-                  />
-                </div>
-
-                {/* Telepon */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
-                    Telepon <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    placeholder="Contoh: 021-12345678"
-                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={form.telepon}
-                    onChange={e =>
-                      setForm(p => ({ ...p, telepon: e.target.value }))
-                    }
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    placeholder="Contoh: info@perusahaan.com"
-                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={form.email}
-                    onChange={e =>
-                      setForm(p => ({ ...p, email: e.target.value }))
-                    }
-                  />
-                </div>
-
-                {/* Penanggung Jawab */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
-                    Penanggung Jawab <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    placeholder="Nama penanggung jawab"
-                    className="w-full rounded-xl border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={form.penanggung_jawab}
-                    onChange={e =>
-                      setForm(p => ({ ...p, penanggung_jawab: e.target.value }))
-                    }
-                  />
-                </div>
-
-                {/* Status */}
-                <div className="space-y-1">
-                  <label className="font-medium text-gray-700">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">
                     Status <span className="text-red-500">*</span>
                   </label>
                   <select
-                    className="w-full rounded-xl border px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full rounded-xl border px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     value={form.status}
-                    onChange={e =>
-                      setForm(p => ({
-                        ...p,
-                        status: e.target.value as DudiStatus,
-                      }))
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, status: e.target.value as DudiStatus }))
                     }
                   >
-                    <option value="aktif">Aktif</option>
                     <option value="pending">Pending</option>
+                    <option value="aktif">Aktif</option>
                     <option value="nonaktif">Nonaktif</option>
                   </select>
                 </div>
               </div>
 
-              {/* ACTION */}
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setOpen(false)}
-                  className="
-                    flex-1 rounded-xl py-2 font-medium
-                    border border-gray-300 text-gray-300
-                    transition-all duration-200
-                    hover:bg-red-500 hover:text-white hover:shadow-md
-                    active:scale-95
-                  ">
+                  onClick={closeModal}
+                  className="flex-1 py-3 px-4 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition"
+                >
                   Batal
                 </button>
                 <button
                   onClick={handleSave}
+                  disabled={!isFormComplete || loading}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium text-white transition ${
+                    isFormComplete && !loading
+                      ? "bg-cyan-600 hover:bg-cyan-700"
+                      : "bg-gray-300 cursor-not-allowed"
+                  }`}
+                >
+                  {loading ? "Menyimpan..." : isEdit ? "Update" : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* MODAL KONFIRMASI HAPUS */}
+      {showDeleteConfirm &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-6">
+              <h2 className="text-xl font-bold text-gray-900">Konfirmasi Nonaktifkan</h2>
+              <p className="text-gray-600">
+                Apakah Anda yakin ingin menonaktifkan DUDI ini? Status akan diubah menjadi "nonaktif" (soft delete).
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 px-4 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmDelete}
                   disabled={loading}
-                  className="
-                    flex-1 rounded-xl py-2 font-medium text-white
-                    bg-gray-300
-                    transition-all duration-200
-                    hover:bg-cyan-600 hover:shadow-md
-                    disabled:hover:bg-gray-300
-                    disabled:cursor-not-allowed
-                  ">
-                  Simpan
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium text-white transition ${
+                    loading ? "bg-gray-400 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  {loading ? "Menghapus..." : "Nonaktifkan"}
                 </button>
               </div>
             </div>
@@ -386,16 +475,14 @@ export default function DudiAdminPage() {
   )
 }
 
-/* ================= COMPONENT ================= */
-
-function StatCard({ title, value, icon }: any) {
+function StatCard({ title, value, icon }: { title: string; value: number; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border p-4 flex justify-between">
+    <div className="bg-white rounded-xl border p-5 flex justify-between items-center">
       <div>
         <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-3xl font-bold mt-1">{value}</p>
       </div>
-      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+      <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
         {icon}
       </div>
     </div>

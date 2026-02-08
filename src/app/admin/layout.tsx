@@ -123,9 +123,14 @@ export default function AdminLayout({
   const [userRole, setUserRole] = useState("")
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
+  const fetchUserProfile = async () => {
+    try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setUserName("Guest")
+        setUserRole("")
+        return
+      }
 
       const { data, error } = await supabase
         .from("users")
@@ -134,16 +139,23 @@ export default function AdminLayout({
         .single()
 
       if (error) {
-        console.error("Gagal ambil data user:", error)
+        console.error("Fetch user profile error:", error.message || error)
+        setUserName("Admin")
+        setUserRole("admin")
         return
       }
 
-      setUserName(data.name || "Admin")
-      setUserRole(data.role || "admin")
+      setUserName(data?.name || "Admin")
+      setUserRole(data?.role || "admin")
+    } catch (err: any) {
+      console.error("Unexpected error in fetchUserProfile:", err)
+      setUserName("Admin")
+      setUserRole("admin")
     }
+  }
 
-    fetchUserProfile()
-  }, [])
+  fetchUserProfile()
+}, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
