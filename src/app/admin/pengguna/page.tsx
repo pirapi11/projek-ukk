@@ -64,7 +64,7 @@ export default function PenggunaPage() {
           className="flex items-center gap-2 bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
-          Tambah Pengguna
+          Tambah User
         </button>
       </div>
 

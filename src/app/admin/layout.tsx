@@ -64,8 +64,7 @@ function ProfileDropdown({
                 w-full flex items-center gap-3 px-4 py-3 text-left text-sm 
                 text-red-600 hover:bg-red-600 hover:text-white 
                 transition-colors duration-200
-              "
-            >
+              ">
               <LogOut className="w-4 h-4" />
               Keluar
             </button>
@@ -86,7 +85,6 @@ function ProfileDropdown({
                 </h3>
                 <p className="text-gray-600">
                   Apakah Anda yakin ingin keluar dari sistem?<br />
-                  Anda akan diarahkan ke halaman login.
                 </p>
               </div>
 

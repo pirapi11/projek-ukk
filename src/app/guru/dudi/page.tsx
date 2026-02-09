@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Building2, CheckCircle2, XCircle, Users } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
-/* ================= TYPES ================= */
+/*tipe*/
 
 type DudiStatus = "aktif" | "nonaktif" | "pending"
 
@@ -19,7 +19,7 @@ type Dudi = {
   students?: number
 }
 
-/* ================= PAGE ================= */
+/*halaman*/
 
 export default function DudiGuruPage() {
   const [data, setData] = useState<Dudi[]>([])
@@ -52,18 +52,18 @@ export default function DudiGuruPage() {
     fetchDudi()
   }, [])
 
-  /* ================= CALCULATED ================= */
+  /*hitung dudi sesuai status*/
 
   const totalDudi = data.length
   const aktif = data.filter(d => d.status === "aktif").length
   const nonaktif = data.filter(d => d.status === "nonaktif").length
 
-  /* ================= RENDER ================= */
+  /*render halaman*/
 
   return (
     <div className="space-y-6">
 
-      {/* HEADER */}
+      {/*judul*/}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Data DUDI</h1>
         <p className="text-sm text-gray-500">
@@ -71,7 +71,7 @@ export default function DudiGuruPage() {
         </p>
       </div>
 
-      {/* STAT CARDS */}
+      {/*3 card*/}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Total DUDI"
@@ -93,7 +93,7 @@ export default function DudiGuruPage() {
         />
       </div>
 
-      {/* TABLE */}
+      {/*tabel dudi*/}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-4">
           <h2 className="font-semibold">Daftar DUDI</h2>
@@ -161,7 +161,7 @@ export default function DudiGuruPage() {
   )
 }
 
-/* ================= COMPONENTS ================= */
+/*komponen card*/
 
 function StatCard({ title, value, desc, icon }: any) {
   return (

@@ -98,7 +98,7 @@ export default function MagangPage() {
         throw error;
       }
 
-    console.log("Raw data dari Supabase:", data);
+    console.log("RAW DATA SUPABASE 👉", data?.[0]);
 
       // Transform relasi array → single object
       const transformed: Magang[] = (data || []).map((row: any) => ({
@@ -107,10 +107,12 @@ export default function MagangPage() {
         tanggal_selesai: row.tanggal_selesai,
         status: row.status,
         nilai_akhir: row.nilai_akhir,
-        siswa: row.siswa?.[0] ?? null,
-        guru: row.guru?.[0] ?? null,
-        dudi: row.dudi?.[0] ?? null,
+        siswa: row.siswa ?? null,
+        guru: row.guru ?? null,
+        dudi: row.dudi ?? null,
         }));
+
+    console.log("SETELAH TRANSFORM 👉", transformed?.[0]);
 
         setMagangList(transformed);
         setTotalCount(count || 0);
