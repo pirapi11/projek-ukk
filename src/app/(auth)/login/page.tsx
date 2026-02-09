@@ -3,12 +3,12 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import {
-  UserIcon,
-  EnvelopeIcon,
-  LockClosedIcon,
-  EyeIcon,
-  EyeSlashIcon,
-} from "@/components/ui/icon"
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+} from "lucide-react"
 
 export default function Page() {
   const router = useRouter()
@@ -57,7 +57,7 @@ export default function Page() {
         {/* ICON */}
         <div className="flex justify-center mb-5">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md">
-            <UserIcon className="w-6 h-6 text-white" />
+            <User className="w-6 h-6 text-white" />
           </div>
         </div>
 
@@ -80,7 +80,7 @@ export default function Page() {
             Email Address
           </label>
           <div className="relative mt-1">
-            <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="email"
               value={email}
@@ -98,7 +98,7 @@ export default function Page() {
             Password
           </label>
           <div className="relative mt-1">
-            <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type={showPassword ? "text" : "password"}
               value={password}
@@ -112,7 +112,7 @@ export default function Page() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
             >
-              {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
             </button>
           </div>
         </div>

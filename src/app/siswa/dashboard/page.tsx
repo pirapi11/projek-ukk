@@ -1,5 +1,7 @@
 "use client"
 
+import ProfileCompletionModal from '@/components/ProfileCompletionModal'
+
 export default function SiswaDashboardPage() {
   const namaSiswa = "Ahmad Rizki Ramadhan"
 

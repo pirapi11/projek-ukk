@@ -40,11 +40,10 @@ export default function DudiPage() {
         return
       }
 
-      // Ambil siswa_id berdasarkan users.id (auth.uid)
       const { data: siswaData, error: siswaErr } = await supabase
         .from("siswa")
         .select("id")
-        .eq("user_id", user.id)  // asumsi ada kolom user_id di tabel siswa
+        .eq("user_id", user.id)
         .single()
 
       if (siswaErr || !siswaData) {
@@ -54,7 +53,6 @@ export default function DudiPage() {
       }
 
       setSiswaId(siswaData.id)
-
       fetchData(siswaData.id)
     }
 
@@ -66,22 +64,20 @@ export default function DudiPage() {
     setError(null)
 
     try {
-      // 1. Ambil DU/DI approved
       const { data: dudiData, error: dudiErr } = await supabase
         .from("dudi")
         .select("id, nama_perusahaan, alamat, penanggung_jawab, kuota, status")
-        .eq("status", "approved")
+        .eq("status", "aktif")
 
       if (dudiErr) throw dudiErr
 
-      // 2. Hitung used (jumlah magang 'pending' + 'diterima' per dudi)
       const dudiWithUsed = await Promise.all(
         (dudiData || []).map(async (d: any) => {
           const { count } = await supabase
             .from("magang")
             .select("*", { count: "exact", head: true })
             .eq("dudi_id", d.id)
-            .in("status", ["pending", "diterima"])  // sesuaikan enum magang_status kamu
+            .in("status", ["pending", "diterima"])
 
           return { ...d, used: count || 0 }
         })
@@ -89,13 +85,14 @@ export default function DudiPage() {
 
       setDudiList(dudiWithUsed)
 
-      // 3. Ambil magang saya
-      const { data: magangData } = await supabase
+      const { data: rawMagang } = await supabase
         .from("magang")
         .select("dudi_id, status")
         .eq("siswa_id", siswaId)
 
-      setMagangSaya(magangData || [])
+      // Paksa tipe supaya TypeScript tidak ragu lagi
+      const magangData = (rawMagang || []) as unknown as MagangSaya[]
+      setMagangSaya(magangData)
     } catch (err: any) {
       console.error(err)
       setError("Gagal memuat data. Coba lagi nanti.")
@@ -104,7 +101,9 @@ export default function DudiPage() {
     }
   }
 
-  const sudahDaftarKe = (dudiId: number) => magangSaya.some(m => m.dudi_id === dudiId)
+  const sudahDaftarKe = (dudiId: number): boolean => {
+    return magangSaya.some((m) => m.dudi_id === dudiId)
+  }
 
   const jumlahMagangSaya = magangSaya.length
 
@@ -125,15 +124,13 @@ export default function DudiPage() {
         siswa_id: siswaId,
         dudi_id: dudi.id,
         status: "pending",
-        // guru_id: null (nanti diisi admin jika perlu)
       })
 
       if (error) throw error
 
-      // Update state lokal
       setMagangSaya([...magangSaya, { dudi_id: dudi.id, status: "pending" }])
-      setDudiList(prev =>
-        prev.map(item =>
+      setDudiList((prev) =>
+        prev.map((item) =>
           item.id === dudi.id ? { ...item, used: (item.used || 0) + 1 } : item
         )
       )
@@ -150,8 +147,6 @@ export default function DudiPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Toast, Title, Filter sama seperti sebelumnya */}
-
       {toast && (
         <div className="fixed top-6 right-6 z-[9999] bg-lime-500 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-in">
           <span className="text-sm font-medium">
@@ -163,8 +158,6 @@ export default function DudiPage() {
 
       <h1 className="text-2xl font-bold text-gray-900">Cari Tempat Magang</h1>
 
-      {/* Filter UI sama */}
-
       {dudiList.length === 0 ? (
         <div className="text-center py-12 text-gray-500">Belum ada DU/DI tersedia.</div>
       ) : (
@@ -172,14 +165,21 @@ export default function DudiPage() {
           {dudiList.map((item) => {
             const kuotaNum = item.kuota ? parseInt(item.kuota, 10) : Infinity
             const tersisa = kuotaNum - (item.used || 0)
-            const sudah = sudahDaftarKe(item.id)
+
+            // Solusi utama: pakai !! + as boolean di sini
+            const sudah = !!sudahDaftarKe(item.id) as boolean
+
             const disabled = tersisa <= 0 || sudah || jumlahMagangSaya >= maxPendaftaran
 
             return (
-              <div key={item.id} className="bg-white rounded-2xl border p-5 flex flex-col justify-between">
-                {/* Header, Info, Quota, Desc sama seperti sebelumnya, ganti field sesuai */}
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl border p-5 flex flex-col justify-between"
+              >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center text-white font-semibold">D</div>
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center text-white font-semibold">
+                    D
+                  </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{item.nama_perusahaan}</h3>
                     {sudah && (
@@ -201,7 +201,12 @@ export default function DudiPage() {
                     <span>{item.used || 0}/{item.kuota || "∞"}</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-500" style={{ width: `${kuotaNum === Infinity ? 0 : ((item.used || 0) / kuotaNum) * 100}%` }} />
+                    <div
+                      className="h-full bg-cyan-500"
+                      style={{
+                        width: `${kuotaNum === Infinity ? 0 : ((item.used || 0) / kuotaNum) * 100}%`,
+                      }}
+                    />
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {kuotaNum === Infinity ? "Tidak terbatas" : `${tersisa} slot tersisa`}
@@ -209,19 +214,27 @@ export default function DudiPage() {
                 </div>
 
                 <div className="mt-5 flex items-center justify-between">
-                  <button onClick={() => setSelectedDudi(item)} className="text-sm text-gray-500 hover:text-gray-700">
+                  <button
+                    onClick={() => setSelectedDudi(item)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
                     Detail
                   </button>
 
                   {sudah ? (
-                    <button disabled className="text-sm px-4 py-2 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed">
+                    <button
+                      disabled
+                      className="text-sm px-4 py-2 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed"
+                    >
                       Sudah Mendaftar
                     </button>
                   ) : (
                     <button
                       onClick={() => handleDaftar(item)}
                       disabled={disabled}
-                      className={`text-sm px-4 py-2 rounded-lg ${disabled ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-cyan-500 text-white hover:bg-cyan-600"}`}
+                      className={`text-sm px-4 py-2 rounded-lg ${
+                        disabled ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-cyan-500 text-white hover:bg-cyan-600"
+                      }`}
                     >
                       Daftar
                     </button>
@@ -233,16 +246,18 @@ export default function DudiPage() {
         </div>
       )}
 
-      {/* Modal Detail sama seperti sebelumnya, sesuaikan field */}
       {selectedDudi && (
         <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl p-6 space-y-6">
-            {/* Isi modal sama, tambah email/telepon jika mau */}
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">{selectedDudi.nama_perusahaan}</h2>
               </div>
-              {sudahDaftarKe(selectedDudi.id) && <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Sudah Daftar</span>}
+              {!!sudahDaftarKe(selectedDudi.id) && (
+                <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                  Sudah Daftar
+                </span>
+              )}
             </div>
 
             <div>
@@ -261,11 +276,22 @@ export default function DudiPage() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
-              <button onClick={() => setSelectedDudi(null)} className="px-4 py-2 rounded-lg border">Tutup</button>
+              <button onClick={() => setSelectedDudi(null)} className="px-4 py-2 rounded-lg border">
+                Tutup
+              </button>
+
               {!sudahDaftarKe(selectedDudi.id) && (
                 <button
-                  onClick={() => { handleDaftar(selectedDudi); setSelectedDudi(null) }}
-                  disabled={jumlahMagangSaya >= maxPendaftaran || (selectedDudi.kuota && (selectedDudi.used || 0) >= parseInt(selectedDudi.kuota, 10))}
+                  onClick={() => {
+                    handleDaftar(selectedDudi)
+                    setSelectedDudi(null)
+                  }}
+                    disabled={
+                      jumlahMagangSaya >= maxPendaftaran ||
+                      (selectedDudi.kuota != null && selectedDudi.kuota.trim() !== '' 
+                        ? (selectedDudi.used || 0) >= parseInt(selectedDudi.kuota, 10)
+                        : false)
+                    }
                   className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50"
                 >
                   Daftar Magang
