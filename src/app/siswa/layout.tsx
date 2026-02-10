@@ -152,9 +152,9 @@ export default function SiswaLayout({
 
   const menu = [
     { name: "Dashboard", path: "/siswa/dashboard", subname: "Ringkasan aktivitas", icon: Home },
-    { name: "Dudi", path: "/siswa/dudi", subname: "Dunia Usaha & Industri", icon: Building2 },
-    { name: "Jurnal Harian", path: "/siswa/jurnal", subname: "Catatan harian", icon: BookOpen },
+    { name: "DUDI", path: "/siswa/dudi", subname: "Dunia Usaha & Industri", icon: Building2 },
     { name: "Magang", path: "/siswa/magang", subname: "Data magang saya", icon: Briefcase },
+    { name: "Jurnal Harian", path: "/siswa/jurnal", subname: "Catatan harian", icon: BookOpen },
   ]
 
   return (

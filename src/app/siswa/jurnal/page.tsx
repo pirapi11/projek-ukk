@@ -20,13 +20,15 @@ import {
   Calendar,
   Upload,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase'; // sesuaikan path
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { useMagangSiswa } from '@/lib/queries'; // sesuaikan path jika berbeda
 
 type VerifikasiStatus = 'pending' | 'disetujui' | 'ditolak';
 
 interface Logbook {
   id: number;
-  tanggal: string; // ISO date string dari DB
+  tanggal: string;
   kegiatan: string;
   kendala?: string | null;
   file?: string | null;
@@ -35,6 +37,17 @@ interface Logbook {
   catatan_dudi?: string | null;
   created_at: string;
 }
+
+const formatTanggal = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const hari = date.toLocaleDateString('id-ID', { weekday: 'short' });
+  const tanggal = date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return `${hari}, ${tanggal}`;
+};
 
 const getStatusBadge = (status: VerifikasiStatus) => {
   const styles = {
@@ -55,6 +68,8 @@ const getStatusBadge = (status: VerifikasiStatus) => {
 };
 
 export default function JurnalHarianPage() {
+  const { magang, loading: magangLoading, error: magangError } = useMagangSiswa();
+
   const [journals, setJournals] = useState<Logbook[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{
@@ -80,7 +95,6 @@ export default function JurnalHarianPage() {
 
       setJournals(data || []);
 
-      // Cek apakah sudah ada jurnal hari ini
       const today = new Date().toISOString().split('T')[0];
       const hasToday = data?.some((j) => j.tanggal === today);
       setTodayJournalExists(!!hasToday);
@@ -103,21 +117,54 @@ export default function JurnalHarianPage() {
   const openDeleteModal = (j: Logbook) => setModal({ type: 'delete', journal: j });
   const closeModal = () => setModal({ type: 'none' });
 
-  // Format tanggal jadi "Sel, 16 Jul 2024"
-  const formatTanggal = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const hari = date.toLocaleDateString('id-ID', { weekday: 'short' });
-    const tanggal = date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    return `${hari}, ${tanggal}`;
-  };
+  if (magangLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Memeriksa status magang Anda...</p>
+        </div>
+      </div>
+    );
+  }
 
+  if (magangError) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-6" />
+          <h2 className="text-xl font-bold text-red-800 mb-3">Terjadi Kesalahan</h2>
+          <p className="text-red-700">{magangError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!magang) {
+    return (
+      <div className="p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-10 text-center max-w-2xl mx-auto">
+          <AlertCircle className="w-20 h-20 text-yellow-600 mx-auto mb-8" />
+          <h2 className="text-2xl font-bold text-yellow-800 mb-4">
+            Anda belum memiliki data magang
+          </h2>
+          <p className="text-lg text-yellow-700 mb-8 leading-relaxed">
+            Silahkan lakukan pendaftaran pada menu DUDI terlebih dahulu.
+          </p>
+          <Link
+            href="/siswa/dudi"
+            className="inline-flex items-center px-8 py-4 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-medium text-lg transition-colors shadow-md"
+          >
+            Ke Halaman Pendaftaran Magang →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Konten utama jika sudah punya magang ──
   return (
-    <div className="space-y-6">
-      {/* PAGE TITLE */}
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Jurnal Harian Magang</h1>
         <button
@@ -128,7 +175,6 @@ export default function JurnalHarianPage() {
         </button>
       </div>
 
-      {/* ALERT - JANGAN LUPA */}
       {!todayJournalExists && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
           <FileText className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
@@ -147,7 +193,6 @@ export default function JurnalHarianPage() {
         </div>
       )}
 
-      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { title: 'Total Jurnal', value: journals.length, icon: BookOpen, desc: 'Jurnal yang telah dibuat' },
@@ -184,7 +229,6 @@ export default function JurnalHarianPage() {
         })}
       </div>
 
-      {/* RIWAYAT JURNAL */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -194,7 +238,6 @@ export default function JurnalHarianPage() {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* SEARCH & FILTER - statis dulu, bisa dikembangkan */}
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
               <input
@@ -293,7 +336,6 @@ export default function JurnalHarianPage() {
             </div>
           )}
 
-          {/* PAGINATION statis dulu */}
           <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-gray-600">
               Menampilkan 1 sampai {journals.length} dari {journals.length} entri
@@ -317,7 +359,6 @@ export default function JurnalHarianPage() {
         </div>
       </div>
 
-      {/* MODAL */}
       {modal.type !== 'none' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -334,13 +375,36 @@ export default function JurnalHarianPage() {
             </div>
 
             <div className="p-6">
-              {modal.type === 'add' && <AddJournalForm onSuccess={() => { closeModal(); fetchJournals(); }} />}
+              {modal.type === 'add' && (
+                <AddJournalForm
+                  magangId={magang.id}
+                  onSuccess={() => {
+                    closeModal();
+                    fetchJournals();
+                  }}
+                  onCancel={closeModal}
+                />
+              )}
               {modal.type === 'view' && modal.journal && <ViewJournal journal={modal.journal} />}
               {modal.type === 'edit' && modal.journal && (
-                <EditJournalForm journal={modal.journal} onSuccess={() => { closeModal(); fetchJournals(); }} />
+                <EditJournalForm
+                  journal={modal.journal}
+                  onSuccess={() => {
+                    closeModal();
+                    fetchJournals();
+                  }}
+                  onCancel={closeModal}
+                />
               )}
               {modal.type === 'delete' && modal.journal && (
-                <DeleteConfirm journal={modal.journal} onSuccess={() => { closeModal(); fetchJournals(); }} />
+                <DeleteConfirm
+                  journal={modal.journal}
+                  onSuccess={() => {
+                    closeModal();
+                    fetchJournals();
+                  }}
+                  onCancel={closeModal}
+                />
               )}
             </div>
           </div>
@@ -350,52 +414,121 @@ export default function JurnalHarianPage() {
   );
 }
 
-/* ──────────────────────────────────────────────
-   FORM TAMBAH JURNAL
-─────────────────────────────────────────────── */
-
-function AddJournalForm({ onSuccess }: { onSuccess: () => void }) {
+function AddJournalForm({
+  magangId,
+  onSuccess,
+  onCancel,
+}: {
+  magangId: number;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [kegiatan, setKegiatan] = useState('');
   const [kendala, setKendala] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const karakterMin = 50;
   const karakterSekarang = kegiatan.length;
   const isValid = karakterSekarang >= karakterMin;
 
+  const getUserId = async () => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) throw new Error("Anda harus login terlebih dahulu");
+    return user.id;
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (!isValid) {
       alert('Deskripsi kegiatan minimal 50 karakter.');
       return;
     }
 
+    if (!magangId) {
+      setErrorMsg('Data magang tidak ditemukan. Silakan periksa halaman Magang.');
+      return;
+    }
+
+    setErrorMsg(null);
+    setUploading(true);
+    setUploadProgress(0);
+
     try {
-      let filePath = null;
+      let fileUrl: string | null = null;
+
       if (file) {
-        filePath = file.name; // sementara simpan nama saja
+        const userId = await getUserId();
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'file';
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${Date.now()}-${safeFileName}`;
+        const filePath = `siswa/${userId}/${tanggal}/${fileName}`;
+
+        setUploadProgress(20);
+
+        const { error: uploadError } = await supabase.storage
+          .from('logbook')
+          .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) throw new Error(uploadError.message || 'Gagal mengupload file');
+
+        setUploadProgress(70);
+
+        const { data: publicUrlData } = supabase.storage.from('logbook').getPublicUrl(filePath);
+        fileUrl = publicUrlData.publicUrl;
+        setUploadProgress(100);
       }
 
-      const { error } = await supabase.from('logbook').insert({
-        tanggal,
-        kegiatan,
-        kendala: kendala || null,
-        file: filePath,
-        status_verifikasi: 'pending',
-      });
+      const { error: insertError } = await supabase
+        .from('logbook')
+        .insert({
+          magang_id: magangId,
+          tanggal,
+          kegiatan,
+          kendala: kendala.trim() || null,
+          file: fileUrl,
+          status_verifikasi: 'pending',
+        });
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
       onSuccess();
     } catch (err: any) {
-      console.error(err);
-      alert('Gagal menambah jurnal: ' + (err.message || 'Unknown error'));
+      console.error('Full error saat submit:', err);
+      setErrorMsg(err.message || 'Gagal menyimpan jurnal. Silakan coba lagi.');
+    } finally {
+      setUploading(false);
     }
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    if (selected.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal 5MB');
+      e.target.value = '';
+      return;
+    }
+
+    const allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    const ext = selected.name.split('.').pop()?.toLowerCase();
+    if (!ext || !allowed.includes(ext)) {
+      alert('Hanya file PDF, DOC, DOCX, JPG, JPEG, PNG yang diperbolehkan');
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selected);
+    setErrorMsg(null);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Panduan Penulisan Journal */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -412,15 +545,12 @@ function AddJournalForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </div>
 
-      {/* Informasi Dasar */}
       <div className="space-y-5">
         <div>
           <h4 className="font-medium text-gray-800 mb-3">Informasi Dasar</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Tanggal *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Tanggal *</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -429,14 +559,13 @@ function AddJournalForm({ onSuccess }: { onSuccess: () => void }) {
                   onChange={(e) => setTanggal(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
                   required
+                  disabled={uploading}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
               <div className="bg-gray-100 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700">
                 Menunggu Verifikasi
               </div>
@@ -444,123 +573,152 @@ function AddJournalForm({ onSuccess }: { onSuccess: () => void }) {
           </div>
         </div>
 
-        {/* Kegiatan Harian */}
         <div>
           <h4 className="font-medium text-gray-800 mb-3">Kegiatan Harian</h4>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Deskripsi Kegiatan *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Deskripsi Kegiatan *</label>
           <textarea
             value={kegiatan}
             onChange={(e) => setKegiatan(e.target.value)}
             rows={6}
+            disabled={uploading}
             className={`w-full px-4 py-3 border ${
               isValid ? 'border-gray-300' : 'border-red-400 focus:border-red-500'
             } rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none text-sm`}
-            placeholder="Contoh: Membuat desain UI aplikasi kasir menggunakan Figma. Melakukan analisis user experience dan wireframing untuk interface yang user-friendly..."
+            placeholder="Contoh: Membuat desain UI aplikasi kasir menggunakan Figma..."
             required
           />
           <div className="flex justify-between text-xs mt-1.5">
             <span className={isValid ? 'text-gray-500' : 'text-red-600 font-medium'}>
               {karakterSekarang} / {karakterMin} minimum
             </span>
-            {!isValid && (
-              <span className="text-red-600">Deskripsi minimal 50 karakter</span>
-            )}
+            {!isValid && <span className="text-red-600">Deskripsi minimal 50 karakter</span>}
           </div>
         </div>
 
-        {/* Dokumentasi Pendukung */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Kendala yang Dihadapi (Opsional)
+          </label>
+          <textarea
+            value={kendala}
+            onChange={(e) => setKendala(e.target.value)}
+            rows={4}
+            disabled={uploading}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none text-sm"
+            placeholder="Contoh: Kesulitan dalam menentukan color palette..."
+          />
+        </div>
+
         <div>
           <h4 className="font-medium text-gray-800 mb-3">Dokumentasi Pendukung</h4>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Upload File (Opsional)
+            Upload File (Opsional – max 5MB)
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50/50">
-            <div className="mx-auto w-16 h-16 bg-cyan-50 rounded-full flex items-center justify-center mb-4">
-              <Upload className="w-8 h-8 text-cyan-500" />
-            </div>
-            <p className="text-base font-medium text-gray-700 mb-1">
-              Pilih file dokumentasi
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              PDF, DOC, DOCX, JPG, PNG (Max 5MB)
-            </p>
 
-            <label className="inline-block px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
-              Browse File
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="hidden"
-              />
-            </label>
+          <div className={`border-2 border-dashed rounded-xl p-6 text-center bg-gray-50/50 relative ${uploading ? 'opacity-75' : ''}`}>
+            {uploading && (
+              <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center rounded-xl z-10">
+                <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p className="text-cyan-700 font-medium">Mengunggah... {uploadProgress}%</p>
+              </div>
+            )}
+
+            {!file && (
+              <>
+                <div className="mx-auto w-16 h-16 bg-cyan-50 rounded-full flex items-center justify-center mb-4">
+                  <Upload className="w-8 h-8 text-cyan-500" />
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  PDF, DOC, DOCX, JPG, PNG (maks. 5 MB)
+                </p>
+                <label className="inline-block px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  Pilih File
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              </>
+            )}
 
             {file && (
-              <div className="mt-4 text-sm text-gray-600">
-                Terpilih: <span className="font-medium">{file.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setFile(null)}
-                  className="ml-3 text-red-600 hover:underline text-xs"
-                >
-                  Hapus
-                </button>
+              <div className="space-y-4">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-700 bg-gray-100 px-4 py-2 rounded-lg">
+                    <FileText className="w-5 h-5 text-cyan-600" />
+                    <span className="font-medium max-w-[260px] truncate">{file.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFile(null)}
+                    className="text-red-600 hover:text-red-800 text-xs underline"
+                    disabled={uploading}
+                  >
+                    Hapus File
+                  </button>
+                </div>
+
+                <label className="inline-block px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  Ganti File
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
               </div>
+            )}
+
+            {errorMsg && (
+              <p className="mt-4 text-red-600 text-sm font-medium bg-red-50 p-3 rounded-lg">
+                {errorMsg}
+              </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Alert bawah */}
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-red-800 mb-1">Lengkapi form terlebih dahulu:</p>
-            <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
-              <li>Pilih tanggal yang valid</li>
-              <li>Deskripsi kegiatan minimal 50 karakter</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Tombol Bawah */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-4 pt-6 border-t">
         <button
           type="button"
-          onClick={() => {} /* onClose dari parent */}
-          className="px-8 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 text-sm font-medium"
+          onClick={onCancel}
+          disabled={uploading}
+          className="px-8 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Batal
         </button>
         <button
           type="submit"
-          disabled={!isValid}
-          className={`px-8 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            isValid
-              ? 'bg-cyan-500 hover:bg-cyan-600 text-white'
+          disabled={!isValid || uploading}
+          className={`px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 min-w-[140px] justify-center ${
+            isValid && !uploading
+              ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          Simpan Jurnal
+          {uploading ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Menyimpan...
+            </>
+          ) : (
+            'Simpan Jurnal'
+          )}
         </button>
       </div>
     </form>
   );
 }
 
-/* ──────────────────────────────────────────────
-   VIEW & EDIT & DELETE (mirip asli, tapi pakai data real)
-─────────────────────────────────────────────── */
+// Komponen ViewJournal, EditJournalForm, DeleteConfirm tetap sama seperti kode asli kamu
+// Jika ingin ditambahkan di sini juga, beri tahu — tapi sebaiknya tetap di file terpisah agar file tidak terlalu panjang
 
 function ViewJournal({ journal }: { journal: Logbook }) {
-  const isApproved = journal.status_verifikasi === 'disetujui';
-  const isPending = journal.status_verifikasi === 'pending';
-  const isRejected = journal.status_verifikasi === 'ditolak';
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -586,74 +744,76 @@ function ViewJournal({ journal }: { journal: Logbook }) {
       {journal.file && (
         <div>
           <h4 className="font-medium text-gray-800 mb-2">Dokumentasi Pendukung</h4>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-cyan-500" />
-              <span className="text-sm text-gray-700">{journal.file}</span>
-            </div>
-            <button className="text-cyan-600 hover:underline text-sm">Unduh</button>
-          </div>
+          <a
+            href={journal.file}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 rounded-lg transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Lihat / Unduh File
+          </a>
         </div>
       )}
 
-      {isRejected && journal.catatan_guru && (
+      {journal.status_verifikasi === 'ditolak' && journal.catatan_guru && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="font-medium text-red-800 mb-1">Alasan Penolakan</p>
           <p className="text-sm text-red-700">{journal.catatan_guru}</p>
         </div>
       )}
 
-      {(isApproved || isRejected) && (journal.catatan_guru || journal.catatan_dudi) && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="font-medium text-blue-800 mb-1">Catatan dari Guru / DUDI</p>
-          {journal.catatan_guru && <p className="text-sm text-blue-700">Guru: {journal.catatan_guru}</p>}
-          {journal.catatan_dudi && <p className="text-sm text-blue-700 mt-2">DUDI: {journal.catatan_dudi}</p>}
-        </div>
-      )}
+      {(journal.status_verifikasi === 'disetujui' || journal.status_verifikasi === 'ditolak') &&
+        (journal.catatan_guru || journal.catatan_dudi) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="font-medium text-blue-800 mb-1">Catatan dari Guru / DUDI</p>
+            {journal.catatan_guru && <p className="text-sm text-blue-700">Guru: {journal.catatan_guru}</p>}
+            {journal.catatan_dudi && <p className="text-sm text-blue-700 mt-2">DUDI: {journal.catatan_dudi}</p>}
+          </div>
+        )}
     </div>
   );
 }
 
-function EditJournalForm({ journal, onSuccess }: { journal: Logbook; onSuccess: () => void }) {
+function EditJournalForm({ journal, onSuccess, onCancel }: { journal: Logbook; onSuccess: () => void; onCancel: () => void }) {
   const [kegiatan, setKegiatan] = useState(journal.kegiatan);
   const [kendala, setKendala] = useState(journal.kendala || '');
-  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const karakterMin = 50;
+  const karakterSekarang = kegiatan.length;
+  const isValid = karakterSekarang >= karakterMin;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (kegiatan.length < 50) {
+    if (!isValid) {
       alert('Deskripsi kegiatan minimal 50 karakter.');
       return;
     }
 
+    setSubmitting(true);
     try {
-      let filePath = journal.file;
-      if (file) {
-        filePath = file.name; // sementara
-      }
-
       const { error } = await supabase
         .from('logbook')
         .update({
           kegiatan,
-          kendala: kendala || null,
-          file: filePath,
-          status_verifikasi: 'pending', // reset ke pending setelah edit
+          kendala: kendala.trim() || null,
+          status_verifikasi: 'pending',
         })
         .eq('id', journal.id);
 
       if (error) throw error;
       onSuccess();
     } catch (err: any) {
-      console.error(err);
+      console.error('Error update jurnal:', err);
       alert('Gagal update jurnal: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ... isi form mirip AddJournalForm, tapi value & onChange pakai state */}
-      {/* tanggal read-only */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
         <input
@@ -664,30 +824,76 @@ function EditJournalForm({ journal, onSuccess }: { journal: Logbook; onSuccess: 
         />
       </div>
 
-      {/* kegiatan, kendala, file upload mirip AddJournalForm */}
-      {/* ... copy paste dan sesuaikan state ... */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Kegiatan *</label>
+        <textarea
+          value={kegiatan}
+          onChange={(e) => setKegiatan(e.target.value)}
+          rows={6}
+          disabled={submitting}
+          className={`w-full px-4 py-3 border ${
+            isValid ? 'border-gray-300' : 'border-red-400'
+          } rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none text-sm`}
+          required
+        />
+        <div className="flex justify-between text-xs mt-1.5">
+          <span className={isValid ? 'text-gray-500' : 'text-red-600 font-medium'}>
+            {karakterSekarang} / {karakterMin} minimum
+          </span>
+          {!isValid && <span className="text-red-600">Deskripsi minimal 50 karakter</span>}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Kendala (opsional)</label>
+        <textarea
+          value={kendala}
+          onChange={(e) => setKendala(e.target.value)}
+          rows={4}
+          disabled={submitting}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none text-sm"
+        />
+      </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <button type="button" onClick={() => {}} className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           Batal
         </button>
-        <button type="submit" className="px-6 py-2.5 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600">
-          Update Jurnal
+        <button
+          type="submit"
+          disabled={!isValid || submitting}
+          className={`px-6 py-2.5 rounded-xl font-medium transition-colors ${
+            isValid && !submitting
+              ? 'bg-cyan-500 text-white hover:bg-cyan-600'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          {submitting ? 'Menyimpan...' : 'Update Jurnal'}
         </button>
       </div>
     </form>
   );
 }
 
-function DeleteConfirm({ journal, onSuccess }: { journal: Logbook; onSuccess: () => void }) {
+function DeleteConfirm({ journal, onSuccess, onCancel }: { journal: Logbook; onSuccess: () => void; onCancel: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+
   async function handleDelete() {
+    setDeleting(true);
     try {
       const { error } = await supabase.from('logbook').delete().eq('id', journal.id);
       if (error) throw error;
       onSuccess();
     } catch (err: any) {
-      console.error(err);
+      console.error('Error hapus jurnal:', err);
       alert('Gagal hapus: ' + err.message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -698,33 +904,27 @@ function DeleteConfirm({ journal, onSuccess }: { journal: Logbook; onSuccess: ()
         <h4 className="text-lg font-semibold text-gray-900 mb-2">Hapus Jurnal Ini?</h4>
         <p className="text-sm text-gray-600">
           Anda akan menghapus jurnal tanggal <strong>{formatTanggal(journal.tanggal)}</strong>.<br />
-          Aksi ini <span className="font-medium text-red-600">tidak dapat dibatalkan</span>.
+          Aksi ini tidak dapat dibatalkan.
         </p>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <button onClick={() => {}} className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={deleting}
+          className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           Batal
         </button>
-        <button onClick={handleDelete} className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700">
-          Ya, Hapus
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {deleting ? 'Menghapus...' : 'Ya, Hapus'}
         </button>
       </div>
     </div>
   );
-}
-
-/* ──────────────────────────────────────────────
-   HELPER FUNCTION (format tanggal)
-─────────────────────────────────────────────── */
-
-function formatTanggal(dateStr: string) {
-  const date = new Date(dateStr);
-  const hari = date.toLocaleDateString('id-ID', { weekday: 'short' });
-  const tanggal = date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  return `${hari}, ${tanggal}`;
 }

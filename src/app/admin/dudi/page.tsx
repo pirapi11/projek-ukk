@@ -11,6 +11,7 @@ import {
   Pencil,
   Trash2,
   Search,
+  Users,
 } from "lucide-react"
 
 /* ================= TYPES ================= */
@@ -26,9 +27,18 @@ interface Dudi {
   penanggung_jawab: string
   status: DudiStatus
   magang: { count: number }[]
+  kuota: string | null
 }
 
-type DudiForm = Omit<Dudi, "id" | "magang">
+type DudiForm = {
+  nama_perusahaan: string
+  alamat: string
+  telepon: string
+  email: string
+  penanggung_jawab: string
+  status: DudiStatus
+  kuota: string | null
+}
 
 /* ================= MAIN COMPONENT ================= */
 
@@ -40,7 +50,8 @@ export default function DudiAdminPage() {
     telepon: "",
     email: "",
     penanggung_jawab: "",
-    status: "pending",
+    status: "aktif",
+    kuota: null,
   })
 
   const [open, setOpen] = useState(false)
@@ -71,12 +82,13 @@ export default function DudiAdminPage() {
         email,
         penanggung_jawab,
         status,
+        kuota,
         magang:magang!magang_dudi_id_fkey (count)
       `)
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error fetch DUDI:", error)
+      console.error("Error fetching DUDI:", error)
     } else {
       setData(dudiData || [])
     }
@@ -94,39 +106,28 @@ export default function DudiAdminPage() {
     setLoading(true)
 
     try {
-      if (isEdit && editId) {
-        // EDIT DUDI
-        const { error } = await supabase
-          .from("dudi")
-          .update({
-            nama_perusahaan: form.nama_perusahaan,
-            alamat: form.alamat,
-            telepon: form.telepon,
-            email: form.email,
-            penanggung_jawab: form.penanggung_jawab,
-            status: form.status,
-          })
-          .eq("id", editId)
+      const payload = {
+        nama_perusahaan: form.nama_perusahaan,
+        alamat: form.alamat,
+        telepon: form.telepon,
+        email: form.email,
+        penanggung_jawab: form.penanggung_jawab,
+        status: form.status,
+        kuota: form.kuota,
+      }
 
+      if (isEdit && editId) {
+        const { error } = await supabase.from("dudi").update(payload).eq("id", editId)
         if (error) throw error
       } else {
-        // TAMBAH DUDI BARU (tanpa user_id)
-        const { error } = await supabase.from("dudi").insert({
-          nama_perusahaan: form.nama_perusahaan,
-          alamat: form.alamat,
-          telepon: form.telepon,
-          email: form.email,
-          penanggung_jawab: form.penanggung_jawab,
-          status: form.status,
-        })
-
+        const { error } = await supabase.from("dudi").insert(payload)
         if (error) throw error
       }
 
       await fetchDudi()
       closeModal()
     } catch (err: any) {
-      console.error("Error save DUDI:", err)
+      console.error("Error saving DUDI:", err)
       alert("Gagal menyimpan: " + (err?.message || "Periksa koneksi atau data duplikat"))
     } finally {
       setLoading(false)
@@ -140,7 +141,8 @@ export default function DudiAdminPage() {
       telepon: "",
       email: "",
       penanggung_jawab: "",
-      status: "pending",
+      status: "aktif",
+      kuota: null,
     })
     setIsEdit(false)
     setEditId(null)
@@ -155,6 +157,7 @@ export default function DudiAdminPage() {
       email: dudi.email,
       penanggung_jawab: dudi.penanggung_jawab,
       status: dudi.status,
+      kuota: dudi.kuota,
     })
     setIsEdit(true)
     setEditId(dudi.id)
@@ -171,14 +174,11 @@ export default function DudiAdminPage() {
     if (!deleteId) return
     setLoading(true)
 
-    const { error } = await supabase
-      .from("dudi")
-      .update({ status: "nonaktif" })
-      .eq("id", deleteId)
+    const { error } = await supabase.from("dudi").delete().eq("id", deleteId)
 
     if (error) {
-      console.error("Error soft delete:", error)
-      alert("Gagal mengubah status")
+      console.error("Error deleting DUDI:", error)
+      alert("Gagal menghapus: " + (error.message || "Mungkin ada data terkait"))
     } else {
       await fetchDudi()
     }
@@ -188,7 +188,6 @@ export default function DudiAdminPage() {
     setLoading(false)
   }
 
-  // Filter & Pagination
   const filtered = data.filter(
     (d) =>
       d.nama_perusahaan.toLowerCase().includes(search.toLowerCase()) ||
@@ -199,34 +198,22 @@ export default function DudiAdminPage() {
   const paginated = filtered.slice((page - 1) * perPage, page * perPage)
   const totalPages = Math.ceil(filtered.length / perPage)
 
+  const totalMagang = data.reduce((sum, d) => sum + (d.magang?.[0]?.count ?? 0), 0)
+  const totalTidakAktif = data.filter((d) => d.status !== "aktif").length
+
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Manajemen DUDI</h1>
-        <p className="text-sm text-gray-500">Data Dunia Usaha dan Dunia Industri</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          title="Total DUDI"
-          value={data.length}
-          icon={<Building2 className="w-5 h-5 text-cyan-600" />}
-        />
-        <StatCard
-          title="Aktif"
-          value={data.filter((d) => d.status === "aktif").length}
-          icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
-        />
-        <StatCard
-          title="Nonaktif"
-          value={data.filter((d) => d.status === "nonaktif").length}
-          icon={<XCircle className="w-5 h-5 text-red-500" />}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Total DUDI" value={data.length} icon={<Building2 className="w-5 h-5 text-cyan-600" />} />
+        <StatCard title="DUDI Aktif" value={data.filter((d) => d.status === "aktif").length} icon={<CheckCircle2 className="w-5 h-5 text-green-600" />} />
+        <StatCard title="DUDI Tidak Aktif" value={totalTidakAktif} icon={<XCircle className="w-5 h-5 text-red-500" />} />
+        <StatCard title="Siswa Magang" value={totalMagang} icon={<Users className="w-5 h-5 text-cyan-600" />} />
       </div>
 
-      {/* Tabel */}
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="p-4 flex flex-col sm:flex-row justify-between gap-4 border-b">
           <h2 className="font-semibold text-lg">Daftar DUDI</h2>
@@ -269,9 +256,14 @@ export default function DudiAdminPage() {
             <tbody className="divide-y">
               {paginated.map((d) => (
                 <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="font-medium">{d.nama_perusahaan}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{d.alamat}</div>
+                  <td className="px-6 py-4 flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-cyan-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{d.nama_perusahaan}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{d.alamat}</div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-xs">
                     <div>{d.email}</div>
@@ -281,9 +273,9 @@ export default function DudiAdminPage() {
                   <td className="px-6 py-4">
                     <span
                       className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium
-                        ${d.status === "aktif" && "bg-green-100 text-green-700"}
-                        ${d.status === "pending" && "bg-yellow-100 text-yellow-700"}
-                        ${d.status === "nonaktif" && "bg-red-100 text-red-700"}
+                        ${d.status === "aktif" ? "bg-green-100 text-green-700" : ""}
+                        ${d.status === "pending" ? "bg-yellow-100 text-yellow-700" : ""}
+                        ${d.status === "nonaktif" ? "bg-red-100 text-red-700" : ""}
                       `}
                     >
                       {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
@@ -306,7 +298,7 @@ export default function DudiAdminPage() {
                         setShowDeleteConfirm(true)
                       }}
                       className="p-2 hover:bg-red-50 rounded-lg"
-                      title="Nonaktifkan"
+                      title="Hapus"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
@@ -324,11 +316,9 @@ export default function DudiAdminPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="px-6 py-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600 border-t">
           <div>
-            Menampilkan {(page - 1) * perPage + 1} –{" "}
-            {Math.min(page * perPage, filtered.length)} dari {filtered.length} entri
+            Menampilkan {(page - 1) * perPage + 1} – {Math.min(page * perPage, filtered.length)} dari {filtered.length} entri
           </div>
           <div className="flex gap-2 mt-3 sm:mt-0">
             <button
@@ -338,9 +328,7 @@ export default function DudiAdminPage() {
             >
               «
             </button>
-            <span className="px-4 py-1 bg-cyan-600 text-white rounded">
-              {page}
-            </span>
+            <span className="px-4 py-1 bg-cyan-600 text-white rounded">{page}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages || totalPages === 0}
@@ -352,7 +340,7 @@ export default function DudiAdminPage() {
         </div>
       </div>
 
-      {/* MODAL TAMBAH/EDIT */}
+      {/* MODAL TAMBAH / EDIT */}
       {open &&
         createPortal(
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -367,32 +355,48 @@ export default function DudiAdminPage() {
               </div>
 
               <div className="space-y-5">
-                {(["nama_perusahaan", "alamat", "telepon", "email", "penanggung_jawab"] as const).map(
+                {(["nama_perusahaan", "alamat", "telepon", "email", "penanggung_jawab", "kuota"] as const).map(
                   (field) => (
                     <div key={field} className="space-y-1.5">
                       <label className="block text-sm font-medium text-gray-700 capitalize">
-                        {field.replace(/_/g, " ")} <span className="text-red-500">*</span>
+                        {field.replace(/_/g, " ")} {field !== "kuota" && <span className="text-red-500">*</span>}
                       </label>
+
                       {field === "alamat" ? (
                         <textarea
                           placeholder="Masukkan alamat lengkap"
                           className="w-full rounded-xl border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[80px]"
-                          value={form[field]}
-                          onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
+                          value={form[field] ?? ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              [field]: e.target.value, // wajib → selalu string
+                            }))
+                          }
                         />
                       ) : (
                         <input
                           type={field === "email" ? "email" : "text"}
                           placeholder={
                             field === "telepon"
-                              ? "Contoh: 031-5551234"
+                              ? "Contoh: 021-12345678"
                               : field === "email"
-                              ? "Contoh: hr@perusahaan.co.id"
+                              ? "Contoh: info@perusahaan.com"
+                              : field === "kuota"
+                              ? "Kuota siswa magang (misal: 10)"
                               : "Masukkan " + field.replace(/_/g, " ")
                           }
                           className="w-full rounded-xl border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          value={form[field]}
-                          onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
+                          value={form[field] ?? ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              [field]:
+                                field === "kuota"
+                                  ? e.target.value || null // opsional → boleh null
+                                  : e.target.value,        // wajib → string
+                            }))
+                          }
                         />
                       )}
                     </div>
@@ -407,11 +411,14 @@ export default function DudiAdminPage() {
                     className="w-full rounded-xl border px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     value={form.status}
                     onChange={(e) =>
-                      setForm((p) => ({ ...p, status: e.target.value as DudiStatus }))
+                      setForm((prev) => ({
+                        ...prev,
+                        status: e.target.value as DudiStatus,
+                      }))
                     }
                   >
-                    <option value="pending">Pending</option>
                     <option value="aktif">Aktif</option>
+                    <option value="pending">Pending</option>
                     <option value="nonaktif">Nonaktif</option>
                   </select>
                 </div>
@@ -428,9 +435,7 @@ export default function DudiAdminPage() {
                   onClick={handleSave}
                   disabled={!isFormComplete || loading}
                   className={`flex-1 py-3 px-4 rounded-xl font-medium text-white transition ${
-                    isFormComplete && !loading
-                      ? "bg-cyan-600 hover:bg-cyan-700"
-                      : "bg-gray-300 cursor-not-allowed"
+                    isFormComplete && !loading ? "bg-cyan-600 hover:bg-cyan-700" : "bg-gray-300 cursor-not-allowed"
                   }`}
                 >
                   {loading ? "Menyimpan..." : isEdit ? "Update" : "Simpan"}
@@ -441,14 +446,14 @@ export default function DudiAdminPage() {
           document.body
         )}
 
-      {/* MODAL KONFIRMASI HAPUS */}
+      {/* MODAL HAPUS */}
       {showDeleteConfirm &&
         createPortal(
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Konfirmasi Nonaktifkan</h2>
+              <h2 className="text-xl font-bold text-gray-900">Konfirmasi Hapus</h2>
               <p className="text-gray-600">
-                Apakah Anda yakin ingin menonaktifkan DUDI ini? Status akan diubah menjadi "nonaktif" (soft delete).
+                Apakah Anda yakin ingin menghapus data DUDI ini? Tindakan ini tidak dapat dibatalkan.
               </p>
               <div className="flex gap-3">
                 <button
@@ -464,7 +469,7 @@ export default function DudiAdminPage() {
                     loading ? "bg-gray-400 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
                   }`}
                 >
-                  {loading ? "Menghapus..." : "Nonaktifkan"}
+                  {loading ? "Menghapus..." : "Ya, Hapus"}
                 </button>
               </div>
             </div>
