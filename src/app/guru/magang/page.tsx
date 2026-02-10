@@ -20,7 +20,7 @@ type MagangRaw = {
   id: number;
   tanggal_mulai: string;
   tanggal_selesai: string;
-  status: "pending" | "aktif" | "selesai" | "ditolak";
+  status: "pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan";
   nilai_akhir?: number | null;
   siswa: Array<{ id: number; nama: string; nis: string; jurusan: string; kelas: string }> | null;
   guru: Array<{ id: number; nama: string; nip: string }> | null;
@@ -32,7 +32,7 @@ type Magang = {
   id: number;
   tanggal_mulai: string;
   tanggal_selesai: string;
-  status: "pending" | "aktif" | "selesai" | "ditolak";
+  status: "pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan";
   nilai_akhir?: number | null;
   siswa: { id: number; nama: string; nis: string; jurusan: string; kelas: string } | null;
   guru: { id: number; nama: string; nip: string } | null;
@@ -46,15 +46,36 @@ type Dudi = { id: number; nama_perusahaan: string; alamat: string };
 export default function MagangPage() {
   const [magangList, setMagangList] = useState<Magang[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
+
   const [openTambah, setOpenTambah] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  
+  const statusClass: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    diterima: "bg-green-100 text-green-800",
+    berlangsung: "bg-blue-100 text-blue-800",
+    selesai: "bg-blue-100 text-blue-800",
+    ditolak: "bg-red-100 text-red-800",
+    dibatalkan: "bg-red-100 text-red-800",
+  }
+  const statusLabel: Record<string, string> = {
+    pending: "Pending",
+    diterima: "Diterima",
+    berlangsung: "Berlangsung",
+    selesai: "Selesai",
+    ditolak: "Ditolak",
+    dibatalkan: "Dibatalkan",
+  }
 
   useEffect(() => {
     fetchMagang();
@@ -124,9 +145,12 @@ export default function MagangPage() {
     }
 
   const total = totalCount;
-  const aktif = magangList.filter((m) => m.status === "aktif").length;
+  const berlangsung = magangList.filter((m) => m.status === "berlangsung").length;
   const selesai = magangList.filter((m) => m.status === "selesai").length;
   const pending = magangList.filter((m) => m.status === "pending").length;
+  const diterima = magangList.filter((m) => m.status === "diterima").length;
+  const ditolak = magangList.filter((m) => m.status === "ditolak").length;
+  const dibatalkan = magangList.filter((m) => m.status === "dibatalkan").length;
 
   async function handleDelete() {
     if (!selectedId) return;
@@ -149,7 +173,7 @@ export default function MagangPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           ["Total Siswa", total, "Siswa magang terdaftar"],
-          ["Aktif", aktif, "Sedang magang"],
+          ["berlangsung", berlangsung, "Sedang magang"],
           ["Selesai", selesai, "Magang selesai"],
           ["Pending", pending, "Menunggu penempatan"],
         ].map(([title, value, desc], idx) => (
@@ -190,7 +214,7 @@ export default function MagangPage() {
             >
               <option value="">Semua Status</option>
               <option value="pending">Pending</option>
-              <option value="aktif">Aktif</option>
+              <option value="berlangsung">berlangsung</option>
               <option value="selesai">Selesai</option>
             </select>
           </div>
@@ -286,16 +310,10 @@ export default function MagangPage() {
                       <td className="px-6 py-4">
                         <span
                           className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
-                            item.status === "aktif"
-                              ? "bg-green-100 text-green-800"
-                              : item.status === "selesai"
-                              ? "bg-blue-100 text-blue-800"
-                              : item.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                            statusClass[item.status] || "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                          {statusLabel[item.status] || "-"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -471,7 +489,7 @@ function FormTambah({ onSuccess }: { onSuccess: () => void }) {
   const [dudiId, setDudiId] = useState("");
   const [mulai, setMulai] = useState("");
   const [selesai, setSelesai] = useState("");
-  const [status, setStatus] = useState<"pending" | "aktif" | "selesai">("pending");
+  const [status, setStatus] = useState<"pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan">("pending");
 
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [guruList, setGuruList] = useState<Guru[]>([]);
@@ -598,12 +616,13 @@ function FormTambah({ onSuccess }: { onSuccess: () => void }) {
             className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={status}
             onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-              setStatus(e.target.value as "pending" | "aktif" | "selesai")
+              setStatus(e.target.value as "pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan")
             }
           >
             <option value="pending">Pending</option>
-            <option value="aktif">Aktif</option>
-            <option value="selesai">Selesai</option>
+            <option value="diterima">Diterima</option>
+            <option value="ditolak">Ditolak</option>
+            <option value="dibatalkan">Dibatalkan</option>
           </select>
         </div>
       </Section>
@@ -616,7 +635,7 @@ function FormTambah({ onSuccess }: { onSuccess: () => void }) {
 function FormEdit({ magangId, onSuccess }: { magangId: number; onSuccess: () => void }) {
   const [mulai, setMulai] = useState("");
   const [selesai, setSelesai] = useState("");
-  const [status, setStatus] = useState<"pending" | "aktif" | "selesai">("pending");
+  const [status, setStatus] = useState<"pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan">("pending");
   const [nilai, setNilai] = useState<number | "">("");
   const [loading, setLoading] = useState(true);
 
@@ -634,7 +653,7 @@ function FormEdit({ magangId, onSuccess }: { magangId: number; onSuccess: () => 
       } else if (data) {
         setMulai(data.tanggal_mulai ?? "");
         setSelesai(data.tanggal_selesai ?? "");
-        setStatus(data.status ?? "pending");
+        setStatus(data.status ?? "");
         setNilai(data.nilai_akhir ?? "");
       }
       setLoading(false);
@@ -698,11 +717,12 @@ function FormEdit({ magangId, onSuccess }: { magangId: number; onSuccess: () => 
             className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={status}
             onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-              setStatus(e.target.value as "pending" | "aktif" | "selesai")
+              setStatus(e.target.value as "pending" | "diterima" | "ditolak" | "berlangsung" | "selesai" | "dibatalkan")
             }
           >
             <option value="pending">Pending</option>
-            <option value="aktif">Aktif</option>
+            <option value="diterima">Diterima</option>
+            <option value="berlangsung">Berlangsung</option>
             <option value="selesai">Selesai</option>
           </select>
         </div>

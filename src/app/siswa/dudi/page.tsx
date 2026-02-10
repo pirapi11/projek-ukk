@@ -2,6 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import {
+  User,
+  MapPinIcon,
+  Mail,
+  BookOpen,
+  MapPin,
+  Phone,
+  Calendar,
+  Building2,
+  Eye
+} from "lucide-react"
 
 type Dudi = {
   id: number
@@ -66,7 +77,7 @@ export default function DudiPage() {
     try {
       const { data: dudiData, error: dudiErr } = await supabase
         .from("dudi")
-        .select("id, nama_perusahaan, alamat, penanggung_jawab, kuota, status")
+        .select("id, nama_perusahaan, alamat, penanggung_jawab, kuota, status, telepon, email")
         .eq("status", "aktif")
 
       if (dudiErr) throw dudiErr
@@ -159,14 +170,13 @@ export default function DudiPage() {
       <h1 className="text-2xl font-bold text-gray-900">Cari Tempat Magang</h1>
 
       {dudiList.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">Belum ada DU/DI tersedia.</div>
+        <div className="text-center py-12 text-gray-500">Belum ada DUDI tersedia.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {dudiList.map((item) => {
             const kuotaNum = item.kuota ? parseInt(item.kuota, 10) : Infinity
             const tersisa = kuotaNum - (item.used || 0)
 
-            // Solusi utama: pakai !! + as boolean di sini
             const sudah = !!sudahDaftarKe(item.id) as boolean
 
             const disabled = tersisa <= 0 || sudah || jumlahMagangSaya >= maxPendaftaran
@@ -177,8 +187,8 @@ export default function DudiPage() {
                 className="bg-white rounded-2xl border p-5 flex flex-col justify-between"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center text-white font-semibold">
-                    D
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{item.nama_perusahaan}</h3>
@@ -191,8 +201,17 @@ export default function DudiPage() {
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm text-gray-500">
-                  <p>📍 {item.alamat || "-"}</p>
-                  <p>👤 PIC: {item.penanggung_jawab || "-"}</p>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span>{item.alamat || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-400" />
+                    <span>
+                      <span className="font-medium text-gray-600">PIC:</span>{" "}
+                      {item.penanggung_jawab || "-"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-4">
@@ -216,15 +235,16 @@ export default function DudiPage() {
                 <div className="mt-5 flex items-center justify-between">
                   <button
                     onClick={() => setSelectedDudi(item)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
                   >
-                    Detail
+                    <Eye className="w-4 h-4" />
+                    <span>Detail</span>
                   </button>
 
                   {sudah ? (
                     <button
                       disabled
-                      className="text-sm px-4 py-2 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed"
+                      className="font-semibold px-4 py-2 rounded-xl bg-gray-200 text-gray-500 cursor-not-allowed"
                     >
                       Sudah Mendaftar
                     </button>
@@ -232,7 +252,7 @@ export default function DudiPage() {
                     <button
                       onClick={() => handleDaftar(item)}
                       disabled={disabled}
-                      className={`text-sm px-4 py-2 rounded-lg ${
+                      className={`font-semibold px-4 py-2 rounded-xl ${
                         disabled ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-cyan-500 text-white hover:bg-cyan-600"
                       }`}
                     >
@@ -247,30 +267,42 @@ export default function DudiPage() {
       )}
 
       {selectedDudi && (
-        <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl p-6 space-y-6">
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-bold">{selectedDudi.nama_perusahaan}</h2>
               </div>
               {!!sudahDaftarKe(selectedDudi.id) && (
-                <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                <span className="px-2 py-1 font-semibold rounded-full bg-yellow-100 text-yellow-700">
                   Sudah Daftar
                 </span>
               )}
             </div>
 
             <div>
-              <h3 className="font-semibold text-sm mb-1">Kontak</h3>
+              <h3 className="font-semibold text-sm mb-1">Informasi Kontak</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
-                <div>📍 {selectedDudi.alamat || "-"}</div>
-                <div>👤 {selectedDudi.penanggung_jawab || "-"}</div>
-                <div>📧 {selectedDudi.email || "-"}</div>
-                <div>📞 {selectedDudi.telepon || "-"}</div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-gray-500" />
+                  <span>{selectedDudi.alamat || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-500" />
+                  <span>{selectedDudi.penanggung_jawab || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-gray-500" />
+                  <span>{selectedDudi.email || "-"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-gray-500" />
+                  <span>{selectedDudi.telepon || "-"}</span>
+                </div>
               </div>
             </div>
 
-            <div className="bg-cyan-50 rounded-xl p-4 text-sm">
+            <div className="bg-cyan-100 rounded-xl p-4 text-sm">
               Kuota: {selectedDudi.used || 0}/{selectedDudi.kuota || "∞"}<br />
               Tersisa: {selectedDudi.kuota ? (parseInt(selectedDudi.kuota, 10) - (selectedDudi.used || 0)) : "Tidak terbatas"}
             </div>
