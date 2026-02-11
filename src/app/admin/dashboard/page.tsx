@@ -1,5 +1,6 @@
 "use client"
 
+import DudiStatusChart from "@/components/DudiStatusChart"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
@@ -123,6 +124,8 @@ export default function AdminDashboard() {
           )
         })}
       </div>
+
+      <DudiStatusChart />
 
       {/* CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -135,7 +135,7 @@ export default function SiswaDashboardPage() {
         </p>
       </div>
 
-      {/* Ringkasan cepat / card dashboard */}
+      {/* Ringkasan cepat / card dashboard
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <div className="flex items-center gap-4">
@@ -174,7 +174,7 @@ export default function SiswaDashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Modal Profil Siswa Baru */}
       {showModal && (
@@ -290,13 +290,6 @@ export default function SiswaDashboardPage() {
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                  >
-                    Nanti Saja
-                  </button>
                   <button
                     type="submit"
                     className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-medium transition-colors"

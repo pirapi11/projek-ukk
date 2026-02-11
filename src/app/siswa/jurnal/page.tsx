@@ -61,7 +61,7 @@ const getStatusBadge = (status: VerifikasiStatus) => {
     ditolak: 'Ditolak',
   };
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${styles[status]}`}>
       {labels[status]}
     </span>
   );
@@ -121,8 +121,8 @@ export default function JurnalHarianPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Memeriksa status magang Anda...</p>
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-500 font-semibold">Memuat daftar jurnal</p>
         </div>
       </div>
     );
@@ -193,7 +193,7 @@ export default function JurnalHarianPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ">
         {[
           { title: 'Total Jurnal', value: journals.length, icon: BookOpen, desc: 'Jurnal yang telah dibuat' },
           {
@@ -201,6 +201,7 @@ export default function JurnalHarianPage() {
             value: journals.filter((j) => j.status_verifikasi === 'disetujui').length,
             icon: CheckCircle,
             desc: 'Jurnal disetujui guru',
+            
           },
           {
             title: 'Menunggu',
@@ -208,12 +209,7 @@ export default function JurnalHarianPage() {
             icon: Clock,
             desc: 'Belum diverifikasi',
           },
-          {
-            title: 'Ditolak',
-            value: journals.filter((j) => j.status_verifikasi === 'ditolak').length,
-            icon: XCircle,
-            desc: 'Perlu diperbaiki',
-          },
+          
         ].map((item, i) => {
           const Icon = item.icon;
           return (
@@ -431,6 +427,16 @@ function AddJournalForm({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const BATAS_JAM = 12;
+
+  const isLewatBatasJam = () => {
+    const now = new Date();
+    const jamSekarang = now.getHours();
+    return jamSekarang >= BATAS_JAM;
+  };
+
+  const lewatBatas = isLewatBatasJam();
+
   const karakterMin = 50;
   const karakterSekarang = kegiatan.length;
   const isValid = karakterSekarang >= karakterMin;
@@ -446,6 +452,11 @@ function AddJournalForm({
 
     if (!isValid) {
       alert('Deskripsi kegiatan minimal 50 karakter.');
+      return;
+    }
+
+    if (isLewatBatasJam()) {
+      alert("Batas pengumpulan jurnal adalah pukul 09:00");
       return;
     }
 
@@ -644,6 +655,14 @@ function AddJournalForm({
               </>
             )}
 
+            {isLewatBatasJam() && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm text-red-700 font-medium">
+                  Batas pengumpulan jurnal sudah terlewat.
+                </p>
+              </div>
+            )}
+
             {file && (
               <div className="space-y-4">
                 <div className="flex flex-col items-center gap-2">
@@ -694,9 +713,9 @@ function AddJournalForm({
         </button>
         <button
           type="submit"
-          disabled={!isValid || uploading}
+          disabled={!isValid || uploading || lewatBatas}
           className={`px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 min-w-[140px] justify-center ${
-            isValid && !uploading
+            isValid && !uploading && !lewatBatas
               ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}

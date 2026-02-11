@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 type Role = "admin" | "guru" | "siswa"
+// role harus ini, selain ini eror
 
 interface UserType {
   id: string
@@ -21,24 +22,32 @@ interface UserType {
   role: Role
   email_verified?: "Verified" | "Unverified"
   created_at?: string
-}
+}// bentuk tabel users begini
 
 export default function PenggunaPage() {
+
   const [users, setUsers] = useState<UserType[]>([])
+  // untuk simpan data hasil fetch dari database
+
   const [loading, setLoading] = useState(true)
+
   const [openAdd, setOpenAdd] = useState(false)
+  // untuk buka tutup modal tambah user
+
   const [openEdit, setOpenEdit] = useState<UserType | null>(null)
   const [openDelete, setOpenDelete] = useState<UserType | null>(null)
+
   const [errorMsg, setErrorMsg] = useState("")
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, []) //saat halaman pertama kali dibuka panggil function fetchUser
 
   async function fetchUsers() {
     setLoading(true)
     setErrorMsg("")
     try {
+      //dibawah ini untuk ambil data tabel users
       const { data, error } = await supabase
         .from("users")
         .select("id, name, email, role, email_verified, created_at")
@@ -227,18 +236,30 @@ function FormTambahUser({ onSuccess, onCancel }: { onSuccess: () => void; onCanc
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { name, role },
-        },
       })
 
       if (authError) throw authError
-      if (!authData.user) throw new Error("Gagal buat akun")
+      if (!authData.user) throw new Error("User auth gagal dibuat")
 
-      onSuccess()  // trigger sudah handle insert ke public.users
+      const userId = authData.user.id
+
+      const { error: rpcError } = await supabase.rpc(
+        "create_user_with_role",
+        {
+          p_user_id: userId,
+          p_name: name,
+          p_email: email,
+          p_role: role,
+        }
+      )
+
+      if (rpcError) throw rpcError
+
+      onSuccess()
+
     } catch (err: any) {
       console.error("Error tambah user:", err)
-      setError(err.message || "Gagal tambah user. Cek email sudah terdaftar atau role valid.")
+      setError(err.message || "Gagal tambah user (rollback terjadi)")
     } finally {
       setLoading(false)
     }

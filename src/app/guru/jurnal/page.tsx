@@ -206,13 +206,13 @@ export default function Page() {
         ) : journals.length === 0 ? (
           <div className="p-10 text-center text-gray-500">Belum ada jurnal siswa</div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
-                <th className="px-5 py-3 text-left">Siswa & Tanggal</th>
+                <th className="px-5 py-3 text-left whitespace-nowrap">Siswa & Tanggal</th>
                 <th className="px-5 py-3 text-left">Kegiatan & Kendala</th>
                 <th className="px-5 py-3 text-left">Status</th>
-                <th className="px-5 py-3 text-left">Catatan Guru</th>
+                <th className="px-5 py-3 text-left whitespace-nowrap">Catatan Guru</th>
                 <th className="px-5 py-3 text-center">Aksi</th>
               </tr>
             </thead>
@@ -236,7 +236,8 @@ export default function Page() {
 
                   <td className="px-5 py-4">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs ${
+                      className={`px-3 py-1 rounded-full text-xs whitespace-nowrap
+                      ${
                         item.status === "disetujui"
                           ? "bg-green-100 text-green-700"
                           : item.status === "pending"
@@ -248,7 +249,7 @@ export default function Page() {
                     </span>
                   </td>
 
-                  <td className="px-5 py-4 text-gray-500">
+                  <td className="px-5 py-4 text-gray-500 whitespace-nowrap">
                     {item.catatan ?? "Belum ada catatan"}
                   </td>
 

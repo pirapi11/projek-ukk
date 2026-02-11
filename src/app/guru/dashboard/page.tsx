@@ -10,6 +10,7 @@ import {
   MapPin,
   Phone,
   Calendar,
+  AlertCircle
 } from "lucide-react"
 
 export default function GuruDashboard() {
@@ -18,6 +19,16 @@ export default function GuruDashboard() {
   const [magangTerbaru, setMagangTerbaru] = useState<any[]>([])
   const [dudiAktif, setDudiAktif] = useState<any[]>([])
   const [logbookTerbaru, setLogbookTerbaru] = useState<any[]>([])
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [guruId, setGuruId] = useState<number | null>(null)
+
+  const [form, setForm] = useState({
+    nip: "",
+    alamat: "",
+    telepon: "",
+  })
+
+  const [loadingSave, setLoadingSave] = useState(false)
 
   /* ================= FETCH ================= */
   useEffect(() => {
@@ -31,6 +42,21 @@ export default function GuruDashboard() {
     } = await supabase.auth.getUser()
 
     if (!user) return
+
+    const { data: guru } = await supabase
+      .from("guru")
+      .select("id, nip, alamat, telepon")
+      .eq("user_id", user.id)
+      .single()
+
+    if (guru) {
+      setGuruId(guru.id)
+
+      // kalau data belum lengkap → tampilkan modal
+      if (!guru.nip || !guru.alamat || !guru.telepon) {
+        setShowProfileModal(true)
+      }
+    }
 
     /* ===== TOTAL SISWA BIMBINGAN ===== */
     const { count: totalSiswa } = await supabase
@@ -121,6 +147,30 @@ export default function GuruDashboard() {
       .limit(5)
 
     setLogbookTerbaru(logbook || [])
+  }
+
+  async function handleSaveProfile() {
+    if (!guruId) return
+
+    setLoadingSave(true)
+
+    const { error } = await supabase
+      .from("guru")
+      .update({
+        nip: form.nip,
+        alamat: form.alamat,
+        telepon: form.telepon,
+        updated_at: new Date(),
+      })
+      .eq("id", guruId)
+
+    setLoadingSave(false)
+
+    if (!error) {
+      setShowProfileModal(false)
+    } else {
+      alert("Gagal menyimpan data")
+    }
   }
 
   /* ================= UI ================= */
@@ -232,6 +282,102 @@ export default function GuruDashboard() {
           ))}
         </div>
       </div>
+      {showProfileModal && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      
+      {/* Header */}
+      <div className="sticky top-0 bg-white border-b px-6 py-4 z-10">
+        <h3 className="text-xl font-bold text-gray-900">
+          Lengkapi Profil Guru Anda
+        </h3>
+      </div>
+
+      <div className="p-6 space-y-6">
+
+        {/* Info */}
+        <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-cyan-600 mt-0.5" />
+            <p className="text-sm text-cyan-800">
+              Sebelum melanjutkan, silakan lengkapi data profil guru Anda terlebih dahulu.
+            </p>
+          </div>
+        </div>
+
+        {/* Form */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveProfile()
+                }}
+                className="space-y-5"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    NIP *
+                  </label>
+                  <input
+                    type="text"
+                    value={form.nip}
+                    onChange={(e) =>
+                      setForm({ ...form, nip: e.target.value })
+                    }
+                    required
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Alamat *
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={form.alamat}
+                    onChange={(e) =>
+                      setForm({ ...form, alamat: e.target.value })
+                    }
+                    required
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nomor Telepon *
+                  </label>
+                  <input
+                    type="tel"
+                    value={form.telepon}
+                    onChange={(e) =>
+                      setForm({ ...form, telepon: e.target.value })
+                    }
+                    required
+                    placeholder="Contoh: 08123456789"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    type="submit"
+                    disabled={loadingSave}
+                    className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700
+                              text-white rounded-xl font-medium transition-colors
+                              disabled:opacity-50"
+                  >
+                    {loadingSave ? "Menyimpan..." : "Simpan Profil"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

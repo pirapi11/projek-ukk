@@ -282,7 +282,7 @@ export default function MagangPage() {
                         <div className="flex items-start gap-2">
                           <Globe size={16} className="text-gray-400 mt-1" />
                           <div>
-                            <div className="font-medium">{item.dudi?.nama_perusahaan ?? "-"}</div>
+                            <div className="font-medium whitespace-nowrap">{item.dudi?.nama_perusahaan ?? "-"}</div>
                             <div className="text-xs text-gray-500">{item.dudi?.alamat ?? "-"}</div>
                           </div>
                         </div>
